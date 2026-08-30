@@ -125,7 +125,7 @@ db.exec(`
   );
 `);
 
-// Tạo tài khoản Admin mặc định
+// Tài khoản Admin mặc định
 const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
 if (!existingAdmin) {
   const hashedAdminPass = bcrypt.hashSync('admin123', 10);
@@ -247,7 +247,6 @@ if (currentCount < 5) {
 }
 
 // ==================== MULTER UPLOAD ====================
-const uploadDir = path.join(__dirname, 'uploads');
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
