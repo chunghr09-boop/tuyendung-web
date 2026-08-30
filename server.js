@@ -2,20 +2,86 @@ const express = require('express');
 const multer = require('multer');
 const session = require('express-session');
 const Database = require('better-sqlite3');
+const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Thư mục lưu trữ CV
+// ==================== CẤU HÌNH GỬI EMAIL (GMAIL SMTP) ====================
+const SENDER_EMAIL = process.env.SENDER_EMAIL || 'chunghr09@gmail.com';
+const SENDER_APP_PASSWORD = process.env.SENDER_APP_PASSWORD || 'dkqo odle fbks luxz'; // Mật khẩu ứng dụng Gmail của bạn
+const HR_EMAIL = process.env.HR_EMAIL || 'chunghr09@gmail.com'; // Email phòng HR nhận thông báo hồ sơ
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: SENDER_EMAIL,
+    pass: SENDER_APP_PASSWORD
+  }
+});
+
+// Hàm gửi email bất đồng bộ
+async function sendNotificationEmails({ fullname, email, jobTitle, cvOriginalName, fileSize, appliedAt }) {
+  try {
+    // 1. Email xác nhận gửi cho Ứng viên
+    const mailToApplicant = {
+      from: `"Phòng Tuyển Dụng - Tập Đoàn Đông Dương" <${SENDER_EMAIL}>`,
+      to: email,
+      subject: `[Xác nhận] Đã nhận hồ sơ ứng tuyển vị trí: ${jobTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px;">
+          <h2 style="color: #0b57d0; border-bottom: 2px solid #0b57d0; padding-bottom: 10px; margin-top: 0;">XÁC NHẬN TIẾP NHẬN HỒ SƠ</h2>
+          <p>Xin chào <strong>${fullname}</strong>,</p>
+          <p>Hệ thống tuyển dụng của <strong>Tập đoàn Đông Dương</strong> đã nhận được hồ sơ ứng tuyển của bạn cho vị trí: <strong style="color: #0b57d0;">${jobTitle}</strong>.</p>
+          <div style="background: #f8fafc; padding: 14px 18px; border-radius: 6px; margin: 16px 0; border: 1px solid #f1f5f9;">
+            <p style="margin: 4px 0;"><strong>Tệp đính kèm:</strong> ${cvOriginalName} (${fileSize})</p>
+            <p style="margin: 4px 0;"><strong>Thời gian nộp:</strong> ${appliedAt}</p>
+          </div>
+          <p>Phòng Nhân sự sẽ đánh giá hồ sơ và liên hệ phỏng vấn qua email này nếu thông tin ứng tuyển phù hợp.</p>
+          <p style="margin-top: 24px; color: #6b7280; font-size: 13px;">Trân trọng,<br><strong style="color: #374151;">Phòng Quản Trị Nhân Sự & Tuyển Dụng</strong></p>
+        </div>
+      `
+    };
+
+    // 2. Email thông báo hồ sơ mới gửi cho HR
+    const mailToHR = {
+      from: `"Cổng Tuyển Dụng" <${SENDER_EMAIL}>`,
+      to: HR_EMAIL,
+      subject: `[CV Mới] Ứng viên ${fullname} nộp vị trí ${jobTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px;">
+          <h2 style="color: #dc2626; border-bottom: 2px solid #dc2626; padding-bottom: 10px; margin-top: 0;">THÔNG BÁO: CÓ HỒ SƠ ỨNG TUYỂN MỚI</h2>
+          <p>Hệ thống vừa ghi nhận thêm một lượt nộp CV với thông tin:</p>
+          <ul style="line-height: 1.8;">
+            <li><strong>Họ tên ứng viên:</strong> ${fullname}</li>
+            <li><strong>Email:</strong> ${email}</li>
+            <li><strong>Vị trí:</strong> ${jobTitle}</li>
+            <li><strong>Tên tệp:</strong> ${cvOriginalName} (${fileSize})</li>
+            <li><strong>Thời gian gửi:</strong> ${appliedAt}</li>
+          </ul>
+          <p style="margin-top: 18px;">Vui lòng truy cập trang Dashboard Admin để tải và duyệt CV.</p>
+        </div>
+      `
+    };
+
+    await Promise.all([
+      transporter.sendMail(mailToApplicant),
+      transporter.sendMail(mailToHR)
+    ]);
+    console.log(`[Email] Đã gửi thông báo cho ứng viên ${email} và HR.`);
+  } catch (error) {
+    console.error('[Email Error] Gửi mail không thành công:', error.message);
+  }
+}
+
+// ==================== CƠ SỞ DỮ LIỆU SQLITE ====================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
-// ==================== KHỞI TẠO CƠ SỞ DỮ LIỆU SQLITE ====================
 const db = new Database(path.join(__dirname, 'recruitment.db'));
 
-// Tạo bảng Jobs & Applicants nếu chưa tồn tại
 db.exec(`
   CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
@@ -42,7 +108,7 @@ db.exec(`
   );
 `);
 
-// Tạo dữ liệu việc làm mẫu ban đầu nếu bảng đang trống
+// Tạo dữ liệu việc làm mẫu nếu bảng trống
 const jobCount = db.prepare('SELECT COUNT(*) as count FROM jobs').get().count;
 if (jobCount === 0) {
   const insertJob = db.prepare(`
@@ -69,7 +135,7 @@ if (jobCount === 0) {
   );
 }
 
-// ==================== BẢO MẬT TẢI FILE ====================
+// ==================== MULTER UPLOAD BẢO MẬT ====================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
@@ -133,7 +199,7 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// ==================== PUBLIC API VIỆC LÀM & ỨNG TUYỂN ====================
+// ==================== PUBLIC API ====================
 app.get('/api/jobs', (req, res) => {
   const { keyword, location, category } = req.query;
   let query = 'SELECT * FROM jobs WHERE 1=1';
@@ -156,7 +222,6 @@ app.get('/api/jobs', (req, res) => {
   query += ' ORDER BY rowid DESC';
   const rows = db.prepare(query).all(...params);
 
-  // Parse chuỗi JSON mảng cho description & requirements
   const jobs = rows.map(r => ({
     ...r,
     description: r.description ? JSON.parse(r.description) : [],
@@ -166,6 +231,7 @@ app.get('/api/jobs', (req, res) => {
   res.json(jobs);
 });
 
+// Tuyển dụng & gửi mail
 app.post('/apply', (req, res) => {
   upload.single('cv')(req, res, (err) => {
     if (err) return res.status(400).send(`<h2 style="color:red; text-align:center; margin-top:50px;">Lỗi: ${err.message} <br><a href="/">Quay lại</a></h2>`);
@@ -174,6 +240,10 @@ app.post('/apply', (req, res) => {
     const cvFile = req.file;
     if (!cvFile) return res.status(400).send('Vui lòng chọn file CV!');
 
+    const appliedAt = new Date().toLocaleString('vi-VN');
+    const fileSize = (cvFile.size / 1024).toFixed(1) + ' KB';
+
+    // 1. Ghi vào Database
     const insertApplicant = db.prepare(`
       INSERT INTO applicants (id, fullname, email, job_title, original_name, saved_name, file_size, applied_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -186,10 +256,21 @@ app.post('/apply', (req, res) => {
       jobTitle || 'Chuyên viên',
       cvFile.originalname,
       cvFile.filename,
-      (cvFile.size / 1024).toFixed(1) + ' KB',
-      new Date().toLocaleString('vi-VN')
+      fileSize,
+      appliedAt
     );
 
+    // 2. Gửi mail tự động
+    sendNotificationEmails({
+      fullname: fullname.trim(),
+      email: email.trim(),
+      jobTitle: jobTitle || 'Chuyên viên',
+      cvOriginalName: cvFile.originalname,
+      fileSize: fileSize,
+      appliedAt: appliedAt
+    });
+
+    // 3. Trả về giao diện thông báo
     res.send(`
       <!DOCTYPE html>
       <html lang="vi">
@@ -198,7 +279,7 @@ app.post('/apply', (req, res) => {
         <div style="background:#fff; padding:40px; border-radius:10px; text-align:center; box-shadow:0 4px 15px rgba(0,0,0,0.08); max-width:450px;">
           <div style="font-size:48px; color:#10b981; margin-bottom:15px;">✓</div>
           <h2 style="color:#111827; margin-bottom:10px;">Ứng Tuyển Thành Công!</h2>
-          <p style="color:#4b5563; font-size:14px; line-height:1.5;">Hồ sơ cho vị trí <strong>${jobTitle}</strong> đã được ghi nhận vào Cơ sở dữ liệu.</p>
+          <p style="color:#4b5563; font-size:14px; line-height:1.5;">Hồ sơ cho vị trí <strong>${jobTitle}</strong> đã được ghi nhận. Email xác nhận đã được gửi tới hòm thư của bạn.</p>
           <div style="margin-top:25px;"><a href="/" style="padding:10px 18px; background:#0b57d0; color:#fff; text-decoration:none; border-radius:6px; font-weight:500;">Về trang chủ</a></div>
         </div>
       </body>
@@ -207,7 +288,7 @@ app.post('/apply', (req, res) => {
   });
 });
 
-// ==================== ADMIN API (SQL QUERIES) ====================
+// ==================== ADMIN API ====================
 app.get('/admin', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
@@ -258,4 +339,4 @@ app.delete('/api/jobs/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.listen(PORT, () => console.log(`Hệ thống cơ sở dữ liệu SQLite đã sẵn sàng tại http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Hệ thống tuyển dụng sẵn sàng tại http://localhost:${PORT}`));
