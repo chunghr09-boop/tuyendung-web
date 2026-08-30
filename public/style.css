@@ -502,3 +502,10 @@ footer {
   border: 1px solid rgba(226, 232, 240, 0.8);
   box-sizing: border-box;
 }
+/* TÁCH RỜI CÁC Ô NHẬP TRONG MODAL */
+.modal-card input,
+.modal-card select,
+.modal-card textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
