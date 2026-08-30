@@ -76,38 +76,129 @@ async function sendNotificationEmails({ fullname, email, jobTitle, cvOriginalNam
   }
 }
 
-// ==================== CƠ SỞ DỮ LIỆU SQLITE ====================
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+// ==================== KHỞI TẠO 5 VỊ TRÍ VIỆC LÀM MẪU ====================
+const jobCount = db.prepare('SELECT COUNT(*) as count FROM jobs').get().count;
+if (jobCount < 5) {
+  // Xóa dữ liệu cũ nếu thiếu để nạp lại đủ 5 vị trí
+  db.prepare('DELETE FROM jobs').run();
 
-const db = new Database(path.join(__dirname, 'recruitment.db'));
+  const insertJob = db.prepare(`
+    INSERT INTO jobs (id, title, company, location, category, salary, badge, description, requirements)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS jobs (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    company TEXT NOT NULL,
-    location TEXT NOT NULL,
-    category TEXT NOT NULL,
-    salary TEXT NOT NULL,
-    badge TEXT DEFAULT 'Mới',
-    description TEXT,
-    requirements TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+  const initialJobs = [
+    {
+      id: 'job-1',
+      title: 'Chuyên Viên C&B (Lương Thưởng & Phúc Lợi)',
+      company: 'Tập đoàn Đông Dương',
+      location: 'Hà Nội',
+      category: 'hr',
+      salary: '12.000.000 - 18.000.000 VNĐ',
+      badge: 'Tuyển gấp',
+      description: [
+        'Thực hiện tính lương, thưởng, phụ cấp và chế độ đãi ngộ hàng tháng cho CBNV.',
+        'Quản lý hồ sơ trích nộp BHXH, BHYT, BHTN và quyết toán Thuế TNCN theo luật định.',
+        'Tham mưu hoàn thiện hệ thống thang bảng lương, quy chế đánh giá KPIs doanh nghiệp.'
+      ],
+      requirements: [
+        'Tốt nghiệp ĐH chuyên ngành Quản trị nhân lực, Luật, Kinh tế lao động hoặc liên quan.',
+        'Nắm vững Bộ luật Lao động 2019, Luật BHXH và các quy định pháp luật tiền lương.',
+        'Sử dụng thành thạo Microsoft Excel nâng cao và phần mềm quản trị nhân sự.'
+      ]
+    },
+    {
+      id: 'job-2',
+      title: 'Chuyên Viên Tuyển Dụng & Thu Hút Nhân Tài (Talent Acquisition)',
+      company: 'Tập đoàn Đông Dương',
+      location: 'Hà Nội',
+      category: 'hr',
+      salary: '10.000.000 - 16.000.000 VNĐ',
+      badge: 'Hot',
+      description: [
+        'Tiếp nhận nhu cầu nhân sự, lập kế hoạch và triển khai các chiến dịch tuyển dụng.',
+        'Tìm kiếm, sàng lọc hồ sơ ứng viên và trực tiếp tổ chức các buổi phỏng vấn chuyên môn.',
+        'Phát triển thương hiệu tuyển dụng (Employer Branding) qua mạng xã hội và ngày hội việc làm.'
+      ],
+      requirements: [
+        'Tốt nghiệp Đại học chuyên ngành Quản trị nhân lực, Quản trị kinh doanh hoặc Ngoại ngữ.',
+        'Kỹ năng giao tiếp, đàm phán và thuyết phục ứng viên xuất sắc.',
+        'Có tư duy nhạy bén về thị trường lao động và nguồn cung ứng viên.'
+      ]
+    },
+    {
+      id: 'job-3',
+      title: 'Chuyên Viên Đào Tạo & Phát Triển Năng Lực (L&D Specialist)',
+      company: 'Tập đoàn Đông Dương',
+      location: 'Đà Nẵng',
+      category: 'hr',
+      salary: '11.000.000 - 17.000.000 VNĐ',
+      badge: 'Mới',
+      description: [
+        'Khảo sát và phân tích nhu cầu đào tạo (TNA) định kỳ cho các phòng ban.',
+        'Thiết kế khung chương trình hội nhập cho nhân viên mới và đào tạo nâng cao nghiệp vụ.',
+        'Đo lường, đánh giá hiệu quả sau đào tạo và quản lý ngân sách đào tạo năm.'
+      ],
+      requirements: [
+        'Cử nhân ngành Quản trị nhân lực, Sư phạm, Tâm lý học tổ chức hoặc liên quan.',
+        'Kỹ năng đứng lớp, truyền đạt thông tin và biên soạn tài liệu giảng dạy tốt.',
+        'Sáng tạo, chủ động và có tinh thần trách nhiệm cao.'
+      ]
+    },
+    {
+      id: 'job-4',
+      title: 'Chuyên Viên Quan Hệ Lao Động & Truyền Thông Nội Bộ',
+      company: 'Tập đoàn Đông Dương',
+      location: 'TP. Hồ Chí Minh',
+      category: 'hr',
+      salary: '10.000.000 - 15.000.000 VNĐ',
+      badge: 'Mới',
+      description: [
+        'Xây dựng, duy trì văn hóa doanh nghiệp và tổ chức các sự kiện gắn kết nội bộ.',
+        'Quản lý hợp đồng lao động, giải quyết khiếu nại, tranh chấp lao động và kỷ luật.',
+        'Tổ chức đối thoại tại nơi làm việc và hội nghị người lao động định kỳ.'
+      ],
+      requirements: [
+        'Tốt nghiệp ĐH chuyên ngành Quản trị nhân sự, Luật Lao động hoặc Báo chí - Truyền thông.',
+        'Am hiểu sâu sắc về quan hệ lao động, kỷ luật lao động và an toàn vệ sinh lao động.',
+        'Năng động, nhiệt huyết và có khả năng kết nối tập thể.'
+      ]
+    },
+    {
+      id: 'job-5',
+      title: 'Trưởng Nhóm Nhân Sự Tổng Hợp (HR Generalist Lead)',
+      company: 'Tập đoàn Đông Dương',
+      location: 'TP. Hồ Chí Minh',
+      category: 'hr',
+      salary: '18.000.000 - 25.000.000 VNĐ',
+      badge: 'Lương cao',
+      description: [
+        'Quản lý và điều phối toàn diện các mảng: Tuyển dụng, C&B, Đào tạo và Quan hệ lao động.',
+        'Tư vấn cho Ban Giám đốc về cơ cấu tổ chức và định biên nhân sự tối ưu.',
+        'Giám sát việc tuân thủ nội quy lao động và chính sách nhân sự toàn tập đoàn.'
+      ],
+      requirements: [
+        'Tối thiểu 3 năm kinh nghiệm trong ngành Quản trị Nhân sự (từng làm HR Generalist).',
+        'Tư duy quản trị chiến lược, khả năng phân tích số liệu nhân sự (HR Analytics).',
+        'Kỹ năng lãnh đạo, giải quyết vấn đề và chịu được áp lực cao.'
+      ]
+    }
+  ];
 
-  CREATE TABLE IF NOT EXISTS applicants (
-    id TEXT PRIMARY KEY,
-    fullname TEXT NOT NULL,
-    email TEXT NOT NULL,
-    job_title TEXT NOT NULL,
-    original_name TEXT NOT NULL,
-    saved_name TEXT NOT NULL,
-    file_size TEXT NOT NULL,
-    applied_at TEXT NOT NULL
-  );
-`);
-
+  for (const job of initialJobs) {
+    insertJob.run(
+      job.id,
+      job.title,
+      job.company,
+      job.location,
+      job.category,
+      job.salary,
+      job.badge,
+      JSON.stringify(job.description),
+      JSON.stringify(job.requirements)
+    );
+  }
+}
 // Tạo dữ liệu việc làm mẫu nếu bảng trống
 const jobCount = db.prepare('SELECT COUNT(*) as count FROM jobs').get().count;
 if (jobCount === 0) {

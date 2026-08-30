@@ -15,11 +15,11 @@
         <h2>Job<span>Admin</span> <small style="font-size:14px; font-weight:normal; color:#6b7280;">| Bảng Quản Trị Tuyển Dụng</small></h2>
       </div>
       <nav style="display:flex; align-items:center; gap:15px;">
-  <a href="/" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Trang Việc Làm</a>
-  <button onclick="handleLogout()" style="background:#fee2e2; color:#dc2626; border:none; padding:8px 14px; border-radius:4px; font-weight:bold; cursor:pointer;">
-    <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
-  </button>
-</nav>
+        <a href="/" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Trang Việc Làm</a>
+        <button onclick="handleLogout()" style="background:#fee2e2; color:#dc2626; border:none; padding:8px 14px; border-radius:4px; font-weight:bold; cursor:pointer;">
+          <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+        </button>
+      </nav>
     </div>
   </header>
 
@@ -35,7 +35,7 @@
       <div class="stat-card">
         <i class="fa-solid fa-briefcase icon-green"></i>
         <div>
-          <h4>5 Vị trí</h4>
+          <h4 id="total-jobs">0 Vị trí</h4>
           <p>Đang mở tuyển dụng</p>
         </div>
       </div>
@@ -70,6 +70,19 @@
   </main>
 
   <script>
+    // Tự động đếm số lượng việc làm từ CSDL
+    async function updateJobCount() {
+      try {
+        const response = await fetch('/api/jobs');
+        const jobs = await response.json();
+        const jobElem = document.getElementById('total-jobs');
+        if (jobElem) jobElem.innerText = `${jobs.length} Vị trí`;
+      } catch (err) {
+        console.error('Lỗi khi lấy danh sách việc làm:', err);
+      }
+    }
+
+    // Tải danh sách ứng viên
     async function loadApplicants() {
       try {
         const response = await fetch('/api/applicants');
@@ -103,11 +116,15 @@
         console.error('Lỗi khi tải dữ liệu:', err);
       }
     }
+
+    // Chạy khi tải trang
     loadApplicants();
-async function handleLogout() {
-  await fetch('/api/logout', { method: 'POST' });
-  window.location.href = '/login.html';
-}
+    updateJobCount();
+
+    async function handleLogout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    }
   </script>
 </body>
 </html>
