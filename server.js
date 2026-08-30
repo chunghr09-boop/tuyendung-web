@@ -45,7 +45,6 @@ async function sendNotificationEmails({ fullname, email, jobTitle, hrEmail, cvOr
       `
     };
 
-    // Gửi CV về email riêng của Nhà tuyển dụng đã đăng bài (hoặc fallback về admin)
     const targetHREmail = hrEmail || ADMIN_FALLBACK_EMAIL;
     const mailToHR = {
       from: `"Cổng Tuyển Dụng" <${SENDER_EMAIL}>`,
@@ -76,7 +75,7 @@ async function sendNotificationEmails({ fullname, email, jobTitle, hrEmail, cvOr
   }
 }
 
-// ==================== DATABASE SQLITE ====================
+// ==================== DATABASE & UPLOAD SETUP ====================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -127,7 +126,7 @@ db.exec(`
   );
 `);
 
-// Tạo tài khoản Admin mặc định
+// Tài khoản Admin mặc định
 const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
 if (!existingAdmin) {
   const hashedAdminPass = bcrypt.hashSync('admin123', 10);
@@ -137,7 +136,7 @@ if (!existingAdmin) {
   `).run('user-admin-root', 'Quản Trị Viên Hệ Thống', 'chunghr09@gmail.com', 'admin', hashedAdminPass, 'admin', 'active');
 }
 
-// Middleware kiểm tra quyền truy cập (Admin hoặc Nhà tuyển dụng)
+// Middleware phân quyền
 const requireStaffOrAdmin = (req, res, next) => {
   if (req.session && req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'employer')) {
     return next();
@@ -155,6 +154,15 @@ const requireAdmin = (req, res, next) => {
   }
   res.redirect('/login.html');
 };
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(session({
+  secret: 'dongduong-recruitment-secret-key-2026',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 2 * 60 * 60 * 1000 }
+}));
 
 // ==================== AUTH APIS ====================
 app.post('/api/register', (req, res) => {
@@ -200,7 +208,7 @@ app.post('/api/login', (req, res) => {
   }
 
   if (user.status === 'blocked') {
-    return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa bởi Quản trị viên!' });
+    return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa!' });
   }
 
   req.session.user = {
@@ -214,7 +222,6 @@ app.post('/api/login', (req, res) => {
   res.json({ success: true, user: req.session.user });
 });
 
-// API Quên mật khẩu & OTP
 app.post('/api/forgot-password', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, message: 'Vui lòng nhập email!' });
@@ -328,8 +335,6 @@ app.get('/api/jobs', (req, res) => {
   res.json(jobs);
 });
 
-// Nộp CV ứng tuyển
-const uploadDir = path.join(__dirname, 'uploads');
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
@@ -349,7 +354,6 @@ app.post('/apply', (req, res) => {
     const cvFile = req.file;
     if (!cvFile) return res.status(400).send('Vui lòng chọn file CV!');
 
-    // Lấy email nhà tuyển dụng đã đăng bài này để gửi CV về đúng email đó
     const jobRecord = db.prepare('SELECT employer_email FROM jobs WHERE title = ?').get(jobTitle);
     const employerEmail = jobRecord ? jobRecord.employer_email : ADMIN_FALLBACK_EMAIL;
 
@@ -393,7 +397,6 @@ app.get('/admin', requireStaffOrAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// API phân quyền thông tin người dùng đang đăng nhập
 app.get('/api/current-user', (req, res) => {
   if (req.session && req.session.user) {
     res.json({ loggedIn: true, user: req.session.user });
@@ -402,7 +405,6 @@ app.get('/api/current-user', (req, res) => {
   }
 });
 
-// Lấy danh sách hồ sơ ứng viên (Admin xem tất cả, Employer có thể xem hoặc quản lý bài đăng của mình)
 app.get('/api/applicants', requireStaffOrAdmin, (req, res) => {
   const rows = db.prepare('SELECT id, fullname, email, job_title as jobTitle, original_name as originalName, saved_name as savedName, file_size as fileSize, applied_at as appliedAt, status FROM applicants ORDER BY rowid DESC').all();
   res.json(rows);
@@ -431,7 +433,6 @@ app.get('/download/:filename', requireStaffOrAdmin, (req, res) => {
   res.download(filePath, applicant ? applicant.original_name : req.params.filename);
 });
 
-// Quản lý Tin Tuyển Dụng (Nhà tuyển dụng & Admin đều đăng/sửa được bài)
 app.post('/api/jobs', requireStaffOrAdmin, (req, res) => {
   const { title, company, location, category, salary, badge, description, requirements } = req.body;
   if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Điền thiếu dữ liệu' });
