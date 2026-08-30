@@ -12,8 +12,8 @@
   <header>
     <div class="header-container">
       <div class="logo">
-        <h2 id="portal-title">Job<span>Portal</span> <small style="font-size:13px; font-weight:normal; color:#6b7280;">| Cổng Quản Trị</small></h2>
-      </div>
+  <h2 id="portal-title">Next<span>step</span> <small style="font-size:13px; font-weight:normal; color:#6b7280;">| Cổng Quản Trị</small></h2>
+</div>
       <nav style="display:flex; align-items:center; gap:12px;">
         <a href="/" target="_blank" style="font-weight:500;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cổng Việc Làm</a>
         <button onclick="handleLogout()" style="background:#fee2e2; color:#dc2626; border:none; padding:8px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
@@ -186,11 +186,10 @@
         if(userData.loggedIn) {
           currentUser = userData.user;
           if(currentUser.role === 'admin') {
-            document.getElementById('portal-title').innerHTML = 'Job<span>Admin Pro</span> <small style="font-size:13px; color:#6b7280;">| Quản Trị Hệ Thống</small>';
-            document.getElementById('tab-btn-users').style.display = 'inline-block';
-            document.getElementById('stat-card-users').style.display = 'flex';
-          } else {
-            document.getElementById('portal-title').innerHTML = 'Job<span>Employer</span> <small style="font-size:13px; color:#6b7280;">| Cổng Nhà Tuyển Dụng</small>';
+  document.getElementById('portal-title').innerHTML = 'Next<span>Admin</span> <small style="font-size:13px; color:#6b7280;">| Quản Trị Hệ Thống</small>';
+} else {
+  document.getElementById('portal-title').innerHTML = 'Next<span>Employer</span> <small style="font-size:13px; color:#6b7280;">| Cổng Nhà Tuyển Dụng</small>';
+}
           }
         }
 
