@@ -9,7 +9,7 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ==================== CẤU HÌNH GỬI EMAIL (GMAIL SMTP SSL) ====================
+// ==================== CẤU HÌNH EMAIL SMTP SSL ====================
 const SENDER_EMAIL = process.env.SENDER_EMAIL || 'chunghr09@gmail.com';
 const SENDER_APP_PASSWORD = process.env.SENDER_APP_PASSWORD || 'dkqoodlefbksluxz';
 const HR_EMAIL = process.env.HR_EMAIL || 'chunghr09@gmail.com';
@@ -69,13 +69,12 @@ async function sendNotificationEmails({ fullname, email, jobTitle, cvOriginalNam
       transporter.sendMail(mailToApplicant),
       transporter.sendMail(mailToHR)
     ]);
-    console.log(`[Email] Đã gửi thông báo thành công cho ứng viên và HR.`);
   } catch (error) {
-    console.error('[Email Error] Gửi mail không thành công:', error.message);
+    console.error('[Email Error]:', error.message);
   }
 }
 
-// ==================== CƠ SỞ DỮ LIỆU SQLITE ====================
+// ==================== DATABASE SQLITE (ATS SCHEMA) ====================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -103,11 +102,18 @@ db.exec(`
     original_name TEXT NOT NULL,
     saved_name TEXT NOT NULL,
     file_size TEXT NOT NULL,
-    applied_at TEXT NOT NULL
+    applied_at TEXT NOT NULL,
+    status TEXT DEFAULT 'pending'
   );
 `);
 
-// Tự động nạp đủ 5 vị trí việc làm
+// Tự động bổ sung cột status nếu DB cũ chưa có
+try {
+  db.exec(`ALTER TABLE applicants ADD COLUMN status TEXT DEFAULT 'pending'`);
+} catch (e) {
+  // Cột đã tồn tại
+}
+
 const initialJobs = [
   {
     id: 'job-1',
@@ -218,7 +224,7 @@ if (currentCount < 5) {
   }
 }
 
-// ==================== MULTER UPLOAD BẢO MẬT ====================
+// ==================== MULTER ====================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
@@ -325,8 +331,8 @@ app.post('/apply', (req, res) => {
     const fileSize = (cvFile.size / 1024).toFixed(1) + ' KB';
 
     const insertApplicant = db.prepare(`
-      INSERT INTO applicants (id, fullname, email, job_title, original_name, saved_name, file_size, applied_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO applicants (id, fullname, email, job_title, original_name, saved_name, file_size, applied_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     `);
 
     insertApplicant.run(
@@ -366,14 +372,37 @@ app.post('/apply', (req, res) => {
   });
 });
 
-// ==================== ADMIN API ====================
+// ==================== ADMIN ATS APIs ====================
 app.get('/admin', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 app.get('/api/applicants', requireAuth, (req, res) => {
-  const rows = db.prepare('SELECT id, fullname, email, job_title as jobTitle, original_name as originalName, saved_name as savedName, file_size as fileSize, applied_at as appliedAt FROM applicants ORDER BY rowid DESC').all();
+  const rows = db.prepare('SELECT id, fullname, email, job_title as jobTitle, original_name as originalName, saved_name as savedName, file_size as fileSize, applied_at as appliedAt, status FROM applicants ORDER BY rowid DESC').all();
   res.json(rows);
+});
+
+// Cập nhật trạng thái ATS vòng đời ứng viên
+app.patch('/api/applicants/:id/status', requireAuth, (req, res) => {
+  const { status } = req.body;
+  const validStatuses = ['pending', 'reviewed', 'interview', 'passed', 'rejected'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+  }
+
+  db.prepare('UPDATE applicants SET status = ? WHERE id = ?').run(status, req.params.id);
+  res.json({ success: true });
+});
+
+// Xóa hồ sơ ứng viên
+app.delete('/api/applicants/:id', requireAuth, (req, res) => {
+  const appRecord = db.prepare('SELECT saved_name FROM applicants WHERE id = ?').get(req.params.id);
+  if (appRecord) {
+    const filePath = path.join(uploadDir, appRecord.saved_name);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+  db.prepare('DELETE FROM applicants WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
 });
 
 app.get('/download/:filename', requireAuth, (req, res) => {
@@ -383,20 +412,19 @@ app.get('/download/:filename', requireAuth, (req, res) => {
   res.download(filePath, applicant ? applicant.original_name : req.params.filename);
 });
 
+// Đăng tin tuyển dụng mới
 app.post('/api/jobs', requireAuth, (req, res) => {
   const { title, company, location, category, salary, badge, description, requirements } = req.body;
-  if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Điền thiếu dữ liệu' });
+  if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin bắt buộc!' });
 
-  const descArr = description ? description.split('\n').filter(line => line.trim() !== '') : [];
-  const reqArr = requirements ? requirements.split('\n').filter(line => line.trim() !== '') : [];
+  const descArr = description ? description.split('\n').map(s => s.trim()).filter(Boolean) : [];
+  const reqArr = requirements ? requirements.split('\n').map(s => s.trim()).filter(Boolean) : [];
   const id = 'job-' + Date.now();
 
-  const insert = db.prepare(`
+  db.prepare(`
     INSERT INTO jobs (id, title, company, location, category, salary, badge, description, requirements)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  insert.run(
+  `).run(
     id,
     title.trim(),
     company.trim(),
@@ -411,9 +439,10 @@ app.post('/api/jobs', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// Xóa tin tuyển dụng
 app.delete('/api/jobs/:id', requireAuth, (req, res) => {
   db.prepare('DELETE FROM jobs WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
-app.listen(PORT, () => console.log(`Hệ thống tuyển dụng sẵn sàng tại http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Hệ thống tuyển dụng ATS đã sẵn sàng tại http://localhost:${PORT}`));
