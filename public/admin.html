@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bảng Điều Hành Tuyển Dụng</title>
+  <title>Bảng Điều Hành - Nextstep</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -12,8 +12,8 @@
   <header>
     <div class="header-container">
       <div class="logo">
-  <h2 id="portal-title">Next<span>step</span> <small style="font-size:13px; font-weight:normal; color:#6b7280;">| Cổng Quản Trị</small></h2>
-</div>
+        <h2 id="portal-title">Next<span>step</span> <small style="font-size:13px; font-weight:normal; color:#6b7280;">| Cổng Quản Trị</small></h2>
+      </div>
       <nav style="display:flex; align-items:center; gap:12px;">
         <a href="/" target="_blank" style="font-weight:500;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Cổng Việc Làm</a>
         <button onclick="handleLogout()" style="background:#fee2e2; color:#dc2626; border:none; padding:8px 14px; border-radius:6px; font-weight:600; cursor:pointer;">
@@ -97,7 +97,7 @@
       </table>
     </section>
 
-    <!-- TAB 2: TÀI KHOẢN (Chỉ Admin thấy) -->
+    <!-- TAB 2: TÀI KHOẢN (Chỉ Admin) -->
     <section id="view-users" class="table-container" style="display:none;">
       <div class="table-header"><h3>Kiểm Soát Tài Khoản Hệ Thống</h3></div>
       <table class="custom-table">
@@ -136,7 +136,7 @@
           </div>
           <div>
             <label style="font-size:12px; font-weight:600;">Đơn vị / Công ty *</label>
-            <input type="text" id="m-company" value="Tập đoàn Đông Dương" required style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin-top:4px;">
+            <input type="text" id="m-company" value="Nextstep" required style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin-top:4px;">
           </div>
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
@@ -183,20 +183,26 @@
       try {
         const userRes = await fetch('/api/current-user');
         const userData = await userRes.json();
-        if(userData.loggedIn) {
-          currentUser = userData.user;
-          if(currentUser.role === 'admin') {
-  document.getElementById('portal-title').innerHTML = 'Next<span>Admin</span> <small style="font-size:13px; color:#6b7280;">| Quản Trị Hệ Thống</small>';
-} else {
-  document.getElementById('portal-title').innerHTML = 'Next<span>Employer</span> <small style="font-size:13px; color:#6b7280;">| Cổng Nhà Tuyển Dụng</small>';
-}
-          }
+        
+        if (!userData.loggedIn) {
+          window.location.href = '/login.html';
+          return;
+        }
+
+        currentUser = userData.user;
+        if (currentUser.role === 'admin') {
+          document.getElementById('portal-title').innerHTML = 'Next<span>Admin</span> <small style="font-size:13px; color:#6b7280;">| Quản Trị Hệ Thống</small>';
+          document.getElementById('tab-btn-users').style.display = 'inline-block';
+          document.getElementById('stat-card-users').style.display = 'flex';
+        } else {
+          document.getElementById('portal-title').innerHTML = 'Next<span>Employer</span> <small style="font-size:13px; color:#6b7280;">| Cổng Nhà Tuyển Dụng</small>';
         }
 
         const [appRes, jobRes] = await Promise.all([
           fetch('/api/applicants'),
           fetch('/api/jobs')
         ]);
+        
         rawApplicants = await appRes.json();
         rawJobs = await jobRes.json();
 
@@ -204,7 +210,7 @@
         document.getElementById('passed-count').innerText = rawApplicants.filter(a => a.status === 'passed').length;
         document.getElementById('total-jobs').innerText = `${rawJobs.length} Vị trí`;
 
-        if(currentUser && currentUser.role === 'admin') {
+        if (currentUser.role === 'admin') {
           const userResAll = await fetch('/api/admin/users');
           rawUsers = await userResAll.json();
           document.getElementById('total-users').innerText = `${rawUsers.length} Người`;
@@ -213,7 +219,10 @@
 
         renderApplicants(rawApplicants);
         renderJobs(rawJobs);
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error('Lỗi tải dữ liệu:', err);
+        document.getElementById('applicant-rows').innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#dc2626;">Lỗi tải dữ liệu hoặc phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!</td></tr>`;
+      }
     }
 
     function switchTab(tab) {
@@ -225,14 +234,14 @@
       document.getElementById('job-actions').style.display = tab === 'jobs' ? 'block' : 'none';
 
       document.getElementById('tab-btn-applicants').classList.toggle('active', tab === 'applicants');
-      if(currentUser && currentUser.role === 'admin') document.getElementById('tab-btn-users').classList.toggle('active', tab === 'users');
+      if (currentUser && currentUser.role === 'admin') document.getElementById('tab-btn-users').classList.toggle('active', tab === 'users');
       document.getElementById('tab-btn-jobs').classList.toggle('active', tab === 'jobs');
     }
 
     function renderApplicants(list) {
       const tbody = document.getElementById('applicant-rows');
       if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#6b7280;">Không có hồ sơ.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#6b7280;">Không có hồ sơ ứng tuyển nào.</td></tr>`;
         return;
       }
       tbody.innerHTML = list.map((item, idx) => `
