@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - Kiểm Soát Tài Khoản & Tuyển Dụng</title>
+  <title>Admin Dashboard - Kiểm Soát Toàn Diện</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -24,7 +24,6 @@
   </header>
 
   <main class="admin-main">
-    <!-- Thống kê hệ thống -->
     <div class="dashboard-stats">
       <div class="stat-card">
         <i class="fa-solid fa-users icon-blue"></i>
@@ -56,7 +55,7 @@
       </div>
     </div>
 
-    <!-- 3 Tab Quản Trị: ATS Hồ sơ / Tài khoản Thành viên / Quản lý Tin tuyển dụng -->
+    <!-- Thanh chuyển Tab -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
       <div style="display:flex; gap:8px;">
         <button id="tab-btn-applicants" onclick="switchTab('applicants')" class="ats-tab-btn active"><i class="fa-solid fa-address-book"></i> Quản Lý Ứng Viên (ATS)</button>
@@ -68,11 +67,11 @@
         <button onclick="loadData()" class="btn-search" style="padding:8px 14px; font-size:13px;"><i class="fa-solid fa-rotate-right"></i> Làm mới</button>
       </div>
       <div id="job-actions" style="display:none;">
-        <button onclick="toggleJobModal(true)" class="btn-search" style="padding:8px 14px; font-size:13px;"><i class="fa-solid fa-plus"></i> Đăng Tin Mới</button>
+        <button onclick="openJobModal('create')" class="btn-search" style="padding:8px 14px; font-size:13px;"><i class="fa-solid fa-plus"></i> Đăng Tin Mới</button>
       </div>
     </div>
 
-    <!-- TAB 1: BẢNG ỨNG VIÊN ATS -->
+    <!-- TAB 1: ỨNG VIÊN ATS -->
     <section id="view-applicants" class="table-container">
       <div class="table-header" style="display:flex; gap:15px; flex-wrap:wrap;">
         <div style="flex:1; min-width:240px;">
@@ -109,7 +108,7 @@
       </table>
     </section>
 
-    <!-- TAB 2: KIỂM SOÁT TẤT CẢ TÀI KHOẢN -->
+    <!-- TAB 2: TÀI KHOẢN -->
     <section id="view-users" class="table-container" style="display:none;">
       <div class="table-header">
         <h3>Danh Sách Toàn Bộ Tài Khoản Hệ Thống</h3>
@@ -121,7 +120,7 @@
             <th>Họ và Tên</th>
             <th>Email</th>
             <th>Tên Đăng Nhập</th>
-            <th>Vai Trò (Role)</th>
+            <th>Vai Trò</th>
             <th>Trạng Thái</th>
             <th>Ngày Tạo</th>
             <th style="text-align:center;">Quyền Kiểm Soát Admin</th>
@@ -133,7 +132,7 @@
       </table>
     </section>
 
-    <!-- TAB 3: QUẢN LÝ TIN TUYỂN DỤNG -->
+    <!-- TAB 3: TIN TUYỂN DỤNG -->
     <section id="view-jobs" class="table-container" style="display:none;">
       <div class="table-header">
         <h3>Danh Sách Tin Đang Đăng Tuyển</h3>
@@ -156,14 +155,15 @@
     </section>
   </main>
 
-  <!-- MODAL THÊM TIN -->
+  <!-- MODAL THÊM / CHỈNH SỬA TIN TUYỂN DỤNG -->
   <div id="job-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-card" style="max-width:600px; width:90%;">
+    <div class="modal-card" style="max-width:620px; width:90%;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3 style="margin:0; color:#111827;">Tạo Bản Tin Tuyển Dụng Mới</h3>
-        <button onclick="toggleJobModal(false)" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6b7280;">&times;</button>
+        <h3 id="modal-title" style="margin:0; color:#111827;">Tạo Bản Tin Tuyển Dụng Mới</h3>
+        <button onclick="closeJobModal()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#6b7280;">&times;</button>
       </div>
-      <form id="create-job-form" onsubmit="handleCreateJob(event)">
+      <form id="job-form" onsubmit="handleSaveJob(event)">
+        <input type="hidden" id="m-job-id">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
           <div>
             <label style="font-size:12px; font-weight:600; color:#374151;">Chức danh công việc *</label>
@@ -193,16 +193,16 @@
           </div>
         </div>
         <div style="margin-bottom:12px;">
-          <label style="font-size:12px; font-weight:600; color:#374151;">Mô tả công việc</label>
-          <textarea id="m-desc" rows="3" placeholder="- Mô tả trách nhiệm..." style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin-top:4px; font-family:inherit; font-size:13px;"></textarea>
+          <label style="font-size:12px; font-weight:600; color:#374151;">Mô tả công việc (Mỗi ý một dòng)</label>
+          <textarea id="m-desc" rows="3" placeholder="- Quản trị công tác nhân sự...&#10;- Xây dựng chính sách đãi ngộ..." style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin-top:4px; font-family:inherit; font-size:13px;"></textarea>
         </div>
         <div style="margin-bottom:18px;">
-          <label style="font-size:12px; font-weight:600; color:#374151;">Yêu cầu ứng viên</label>
-          <textarea id="m-req" rows="3" placeholder="- Yêu cầu bằng cấp, kỹ năng..." style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin-top:4px; font-family:inherit; font-size:13px;"></textarea>
+          <label style="font-size:12px; font-weight:600; color:#374151;">Yêu cầu ứng viên (Mỗi ý một dòng)</label>
+          <textarea id="m-req" rows="3" placeholder="- Tốt nghiệp Đại học Quản trị nhân lực...&#10;- Nắm vững Luật lao động..." style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin-top:4px; font-family:inherit; font-size:13px;"></textarea>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px;">
-          <button type="button" onclick="toggleJobModal(false)" style="padding:8px 16px; border:1px solid #d1d5db; background:#fff; border-radius:6px; cursor:pointer;">Hủy</button>
-          <button type="submit" class="btn-search" style="padding:8px 18px;">Đăng tin</button>
+          <button type="button" onclick="closeJobModal()" style="padding:8px 16px; border:1px solid #d1d5db; background:#fff; border-radius:6px; cursor:pointer;">Hủy</button>
+          <button type="submit" id="btn-submit-job" class="btn-search" style="padding:8px 18px;">Lưu Tin Tuyển Dụng</button>
         </div>
       </form>
     </div>
@@ -275,7 +275,7 @@
           </td>
           <td style="text-align:center; white-space:nowrap;">
             <a href="/download/${item.savedName}" class="btn-download" title="Tải CV"><i class="fa-solid fa-download"></i> Tải</a>
-            <button onclick="deleteApplicant('${item.id}')" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 10px; border-radius:4px; margin-left:6px; cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="deleteApplicant('${item.id}')" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 10px; border-radius:4px; margin-left:6px; cursor:pointer;" title="Xóa"><i class="fa-solid fa-trash"></i></button>
           </td>
         </tr>
       `).join('');
@@ -283,10 +283,6 @@
 
     function renderUsers(list) {
       const tbody = document.getElementById('user-rows');
-      if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#6b7280;">Chưa có người dùng nào đăng ký.</td></tr>`;
-        return;
-      }
       tbody.innerHTML = list.map((u, index) => {
         const isAdmin = u.role === 'admin';
         const isBlocked = u.status === 'blocked';
@@ -323,11 +319,76 @@
           <td><i class="fa-solid fa-location-dot" style="color:#6b7280;"></i> ${job.location}</td>
           <td style="color:#0b57d0; font-weight:600;">${job.salary}</td>
           <td><span class="badge" style="background:#fee2e2; color:#dc2626;">${job.badge || 'Tuyển gấp'}</span></td>
-          <td style="text-align:center;">
-            <button onclick="deleteJob('${job.id}')" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-trash"></i> Xóa tin</button>
+          <td style="text-align:center; white-space:nowrap;">
+            <button onclick="openJobModal('edit', '${job.id}')" style="background:#e0e7ff; color:#3730a3; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer; margin-right:6px;"><i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa</button>
+            <button onclick="deleteJob('${job.id}')" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 12px; border-radius:4px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-trash"></i> Xóa</button>
           </td>
         </tr>
       `).join('');
+    }
+
+    // Modal Thêm & Chỉnh Sửa Tin
+    function openJobModal(mode, jobId = null) {
+      const form = document.getElementById('job-form');
+      form.reset();
+      const modal = document.getElementById('job-modal');
+      const titleElem = document.getElementById('modal-title');
+      const idInput = document.getElementById('m-job-id');
+
+      if (mode === 'edit' && jobId) {
+        const job = rawJobs.find(j => j.id === jobId);
+        if (!job) return;
+        titleElem.innerText = 'Chỉnh Sửa Tin Tuyển Dụng';
+        idInput.value = job.id;
+        document.getElementById('m-title').value = job.title;
+        document.getElementById('m-company').value = job.company;
+        document.getElementById('m-location').value = job.location;
+        document.getElementById('m-salary').value = job.salary;
+        document.getElementById('m-badge').value = job.badge || 'Mới';
+        document.getElementById('m-desc').value = Array.isArray(job.description) ? job.description.join('\n') : (job.description || '');
+        document.getElementById('m-req').value = Array.isArray(job.requirements) ? job.requirements.join('\n') : (job.requirements || '');
+      } else {
+        titleElem.innerText = 'Tạo Bản Tin Tuyển Dụng Mới';
+        idInput.value = '';
+      }
+      modal.style.display = 'flex';
+    }
+
+    function closeJobModal() {
+      document.getElementById('job-modal').style.display = 'none';
+    }
+
+    async function handleSaveJob(e) {
+      e.preventDefault();
+      const jobId = document.getElementById('m-job-id').value;
+      const isEdit = Boolean(jobId);
+
+      const payload = {
+        title: document.getElementById('m-title').value,
+        company: document.getElementById('m-company').value,
+        location: document.getElementById('m-location').value,
+        category: 'hr',
+        salary: document.getElementById('m-salary').value,
+        badge: document.getElementById('m-badge').value,
+        description: document.getElementById('m-desc').value,
+        requirements: document.getElementById('m-req').value
+      };
+
+      const url = isEdit ? `/api/jobs/${jobId}` : '/api/jobs';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        closeJobModal();
+        loadData();
+      } else {
+        alert('Lỗi lưu tin tuyển dụng!');
+      }
     }
 
     async function toggleUserStatus(id, newStatus) {
@@ -340,7 +401,7 @@
     }
 
     async function deleteUser(id) {
-      if (!confirm('Bạn có chắc chắn muốn xóa tài khoản này khỏi hệ thống?')) return;
+      if (!confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) return;
       await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
       loadData();
     }
@@ -375,32 +436,6 @@
       if (!confirm('Bạn có chắc chắn muốn xóa tin tuyển dụng này?')) return;
       await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
       loadData();
-    }
-
-    async function handleCreateJob(e) {
-      e.preventDefault();
-      const body = {
-        title: document.getElementById('m-title').value,
-        company: document.getElementById('m-company').value,
-        location: document.getElementById('m-location').value,
-        category: 'hr',
-        salary: document.getElementById('m-salary').value,
-        badge: document.getElementById('m-badge').value,
-        description: document.getElementById('m-desc').value,
-        requirements: document.getElementById('m-req').value
-      };
-      await fetch('/api/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      toggleJobModal(false);
-      document.getElementById('create-job-form').reset();
-      loadData();
-    }
-
-    function toggleJobModal(show) {
-      document.getElementById('job-modal').style.display = show ? 'flex' : 'none';
     }
 
     function exportCSV() {

@@ -290,7 +290,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ==================== BẢO MẬT TÀI KHOẢN (AUTH APIS) ====================
 
-// Đăng ký ứng viên (Mã hóa mật khẩu bằng bcrypt)
+// Đăng ký ứng viên
 app.post('/api/register', (req, res) => {
   const { fullname, email, username, password } = req.body;
   if (!fullname || !email || !username || !password) {
@@ -302,7 +302,6 @@ app.post('/api/register', (req, res) => {
     return res.status(400).json({ success: false, message: 'Tên đăng nhập hoặc Email này đã tồn tại!' });
   }
 
-  // Mã hóa băm an toàn 10 vòng
   const hashedPassword = bcrypt.hashSync(password.trim(), 10);
   const id = 'user-' + Date.now();
 
@@ -323,7 +322,6 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
   }
 
-  // So khớp mật khẩu đã băm (hoặc dự phòng pass admin mặc định)
   let isMatch = false;
   if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
     isMatch = bcrypt.compareSync(password.trim(), user.password);
@@ -514,6 +512,7 @@ app.get('/download/:filename', requireAdmin, (req, res) => {
   res.download(filePath, applicant ? applicant.original_name : req.params.filename);
 });
 
+// Đăng tin tuyển dụng mới
 app.post('/api/jobs', requireAdmin, (req, res) => {
   const { title, company, location, category, salary, badge, description, requirements } = req.body;
   if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin!' });
@@ -540,6 +539,36 @@ app.post('/api/jobs', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
+// Chỉnh sửa / Cập nhật tin tuyển dụng
+app.put('/api/jobs/:id', requireAdmin, (req, res) => {
+  const { title, company, location, category, salary, badge, description, requirements } = req.body;
+  if (!title || !company || !salary) {
+    return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin bắt buộc!' });
+  }
+
+  const descArr = description ? (Array.isArray(description) ? description : description.split('\n').map(s => s.trim()).filter(Boolean)) : [];
+  const reqArr = requirements ? (Array.isArray(requirements) ? requirements : requirements.split('\n').map(s => s.trim()).filter(Boolean)) : [];
+
+  db.prepare(`
+    UPDATE jobs 
+    SET title = ?, company = ?, location = ?, category = ?, salary = ?, badge = ?, description = ?, requirements = ?
+    WHERE id = ?
+  `).run(
+    title.trim(),
+    company.trim(),
+    location || 'Hà Nội',
+    category || 'hr',
+    salary.trim(),
+    badge || 'Mới',
+    JSON.stringify(descArr),
+    JSON.stringify(reqArr),
+    req.params.id
+  );
+
+  res.json({ success: true });
+});
+
+// Xóa tin tuyển dụng
 app.delete('/api/jobs/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM jobs WHERE id = ?').run(req.params.id);
   res.json({ success: true });
