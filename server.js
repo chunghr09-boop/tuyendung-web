@@ -75,7 +75,7 @@ async function sendNotificationEmails({ fullname, email, jobTitle, cvOriginalNam
   }
 }
 
-// ==================== DATABASE SQLITE (BẢO MẬT USER & ATS) ====================
+// ==================== DATABASE SQLITE ====================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -117,9 +117,15 @@ db.exec(`
     applied_at TEXT NOT NULL,
     status TEXT DEFAULT 'pending'
   );
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    email TEXT NOT NULL,
+    token TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
 `);
 
-// Tạo tài khoản Admin có mật khẩu mã hóa bảo mật
+// Tạo tài khoản Admin mặc định
 const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
 if (!existingAdmin) {
   const hashedAdminPass = bcrypt.hashSync('admin123', 10);
@@ -129,7 +135,7 @@ if (!existingAdmin) {
   `).run('user-admin-root', 'Quản Trị Viên HR', 'chunghr09@gmail.com', 'admin', hashedAdminPass, 'admin', 'active');
 }
 
-// Dữ liệu 5 vị trí mẫu
+// Dữ liệu mẫu 5 vị trí việc làm
 const initialJobs = [
   {
     id: 'job-1',
@@ -240,7 +246,8 @@ if (currentCount < 5) {
   }
 }
 
-// ==================== MULTER ====================
+// ==================== MULTER UPLOAD ====================
+const uploadDir = path.join(__dirname, 'uploads');
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
@@ -249,19 +256,12 @@ const storage = multer.diskStorage({
   }
 });
 
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-];
-const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx'];
-
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ALLOWED_MIME_TYPES.includes(file.mimetype) && ALLOWED_EXTENSIONS.includes(ext)) {
+    if (['.pdf', '.doc', '.docx'].includes(ext)) {
       cb(null, true);
     } else {
       cb(new Error('Chỉ chấp nhận file định dạng PDF, DOC, DOCX!'), false);
@@ -288,9 +288,7 @@ const requireAdmin = (req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== BẢO MẬT TÀI KHOẢN (AUTH APIS) ====================
-
-// Đăng ký ứng viên
+// ==================== AUTH APIS ====================
 app.post('/api/register', (req, res) => {
   const { fullname, email, username, password } = req.body;
   if (!fullname || !email || !username || !password) {
@@ -313,7 +311,6 @@ app.post('/api/register', (req, res) => {
   res.json({ success: true, message: 'Đăng ký tài khoản thành công!' });
 });
 
-// Đăng nhập an toàn
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username.trim());
@@ -348,12 +345,60 @@ app.post('/api/login', (req, res) => {
   res.json({ success: true, user: req.session.user });
 });
 
-app.get('/api/current-user', (req, res) => {
-  if (req.session && req.session.user) {
-    res.json({ loggedIn: true, user: req.session.user });
-  } else {
-    res.json({ loggedIn: false });
+// API Gửi OTP Quên Mật Khẩu & Lấy Lại Tên Đăng Nhập
+app.post('/api/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, message: 'Vui lòng nhập địa chỉ Email!' });
+
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.trim());
+  if (!user) {
+    return res.json({ success: true, message: 'Nếu email tồn tại, hệ thống đã gửi mã xác nhận!' });
   }
+
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 15 * 60 * 1000;
+
+  db.prepare('DELETE FROM password_resets WHERE email = ?').run(email.trim());
+  db.prepare('INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)').run(email.trim(), otpCode, expiresAt);
+
+  try {
+    await transporter.sendMail({
+      from: `"Hỗ Trợ Tuyển Dụng" <${SENDER_EMAIL}>`,
+      to: email.trim(),
+      subject: '[Khôi phục tài khoản] Thông tin Tên đăng nhập & Mã OTP',
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px;">
+          <h2 style="color: #0b57d0; border-bottom: 2px solid #0b57d0; padding-bottom: 10px; margin-top: 0;">KHÔI PHỤC TÀI KHOẢN</h2>
+          <p>Xin chào <strong>${user.fullname}</strong>,</p>
+          <p>Tên đăng nhập hệ thống của bạn là: <strong style="color: #dc2626; font-size: 16px;">${user.username}</strong></p>
+          <p>Mã xác nhận (OTP) để đặt lại mật khẩu mới:</p>
+          <div style="background: #f8fafc; padding: 16px; text-align: center; border-radius: 6px; margin: 20px 0; border: 1px solid #f1f5f9;">
+            <span style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #0b57d0;">${otpCode}</span>
+          </div>
+          <p style="color: #6b7280; font-size: 13px;">Mã này có hiệu lực trong vòng 15 phút.</p>
+        </div>
+      `
+    });
+    res.json({ success: true, message: 'Tên đăng nhập và mã OTP đã được gửi tới email của bạn!' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Không thể gửi email xác nhận!' });
+  }
+});
+
+// API Xác thực OTP và Đặt lại mật khẩu
+app.post('/api/reset-password', (req, res) => {
+  const { email, token, newPassword } = req.body;
+  const record = db.prepare('SELECT * FROM password_resets WHERE email = ? AND token = ?').get(email.trim(), token.trim());
+  
+  if (!record || Date.now() > record.expires_at) {
+    return res.status(400).json({ success: false, message: 'Mã xác nhận không chính xác hoặc đã hết hạn!' });
+  }
+
+  const hashedPass = bcrypt.hashSync(newPassword.trim(), 10);
+  db.prepare('UPDATE users SET password = ? WHERE email = ?').run(hashedPass, email.trim());
+  db.prepare('DELETE FROM password_resets WHERE email = ?').run(email.trim());
+
+  res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -361,7 +406,7 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// ==================== ADMIN QUẢN TRỊ USERS ====================
+// ==================== ADMIN USERS API ====================
 app.get('/api/admin/users', requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT id, fullname, email, username, role, status, created_at FROM users ORDER BY rowid DESC').all();
   res.json(rows);
@@ -370,11 +415,9 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 app.patch('/api/admin/users/:id/status', requireAdmin, (req, res) => {
   const { status } = req.body;
   const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
-
   if (targetUser && targetUser.username === 'admin') {
     return res.status(400).json({ success: false, message: 'Không thể khóa tài khoản Admin tối cao!' });
   }
-
   db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, req.params.id);
   res.json({ success: true });
 });
@@ -384,12 +427,11 @@ app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
   if (targetUser && targetUser.username === 'admin') {
     return res.status(400).json({ success: false, message: 'Không thể xóa tài khoản Admin tối cao!' });
   }
-
   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
-// ==================== PUBLIC API JOBS & APPLY ====================
+// ==================== PUBLIC JOBS & APPLY ====================
 app.get('/api/jobs', (req, res) => {
   const { keyword, location, category } = req.query;
   let query = 'SELECT * FROM jobs WHERE 1=1';
@@ -411,13 +453,11 @@ app.get('/api/jobs', (req, res) => {
 
   query += ' ORDER BY rowid ASC';
   const rows = db.prepare(query).all(...params);
-
   const jobs = rows.map(r => ({
     ...r,
     description: r.description ? JSON.parse(r.description) : [],
     requirements: r.requirements ? JSON.parse(r.requirements) : []
   }));
-
   res.json(jobs);
 });
 
@@ -432,21 +472,10 @@ app.post('/apply', (req, res) => {
     const appliedAt = new Date().toLocaleString('vi-VN');
     const fileSize = (cvFile.size / 1024).toFixed(1) + ' KB';
 
-    const insertApplicant = db.prepare(`
+    db.prepare(`
       INSERT INTO applicants (id, fullname, email, job_title, original_name, saved_name, file_size, applied_at, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-    `);
-
-    insertApplicant.run(
-      Date.now().toString(),
-      fullname.trim(),
-      email.trim(),
-      jobTitle || 'Chuyên viên',
-      cvFile.originalname,
-      cvFile.filename,
-      fileSize,
-      appliedAt
-    );
+    `).run(Date.now().toString(), fullname.trim(), email.trim(), jobTitle || 'Chuyên viên', cvFile.originalname, cvFile.filename, fileSize, appliedAt);
 
     sendNotificationEmails({
       fullname: fullname.trim(),
@@ -474,7 +503,7 @@ app.post('/apply', (req, res) => {
   });
 });
 
-// ==================== ADMIN ATS APIs ====================
+// ==================== ADMIN ATS ====================
 app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
@@ -486,11 +515,6 @@ app.get('/api/applicants', requireAdmin, (req, res) => {
 
 app.patch('/api/applicants/:id/status', requireAdmin, (req, res) => {
   const { status } = req.body;
-  const validStatuses = ['pending', 'reviewed', 'interview', 'passed', 'rejected'];
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
-  }
-
   db.prepare('UPDATE applicants SET status = ? WHERE id = ?').run(status, req.params.id);
   res.json({ success: true });
 });
@@ -512,10 +536,9 @@ app.get('/download/:filename', requireAdmin, (req, res) => {
   res.download(filePath, applicant ? applicant.original_name : req.params.filename);
 });
 
-// Đăng tin tuyển dụng mới
 app.post('/api/jobs', requireAdmin, (req, res) => {
   const { title, company, location, category, salary, badge, description, requirements } = req.body;
-  if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin!' });
+  if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Điền thiếu dữ liệu' });
 
   const descArr = description ? description.split('\n').map(s => s.trim()).filter(Boolean) : [];
   const reqArr = requirements ? requirements.split('\n').map(s => s.trim()).filter(Boolean) : [];
@@ -524,54 +547,27 @@ app.post('/api/jobs', requireAdmin, (req, res) => {
   db.prepare(`
     INSERT INTO jobs (id, title, company, location, category, salary, badge, description, requirements)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    title.trim(),
-    company.trim(),
-    location || 'Hà Nội',
-    category || 'hr',
-    salary.trim(),
-    badge || 'Mới',
-    JSON.stringify(descArr),
-    JSON.stringify(reqArr)
-  );
+  `).run(id, title.trim(), company.trim(), location || 'Hà Nội', category || 'hr', salary.trim(), badge || 'Mới', JSON.stringify(descArr), JSON.stringify(reqArr));
 
   res.json({ success: true });
 });
 
-// Chỉnh sửa / Cập nhật tin tuyển dụng
 app.put('/api/jobs/:id', requireAdmin, (req, res) => {
   const { title, company, location, category, salary, badge, description, requirements } = req.body;
-  if (!title || !company || !salary) {
-    return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin bắt buộc!' });
-  }
-
   const descArr = description ? (Array.isArray(description) ? description : description.split('\n').map(s => s.trim()).filter(Boolean)) : [];
   const reqArr = requirements ? (Array.isArray(requirements) ? requirements : requirements.split('\n').map(s => s.trim()).filter(Boolean)) : [];
 
   db.prepare(`
-    UPDATE jobs 
-    SET title = ?, company = ?, location = ?, category = ?, salary = ?, badge = ?, description = ?, requirements = ?
+    UPDATE jobs SET title = ?, company = ?, location = ?, category = ?, salary = ?, badge = ?, description = ?, requirements = ?
     WHERE id = ?
-  `).run(
-    title.trim(),
-    company.trim(),
-    location || 'Hà Nội',
-    category || 'hr',
-    salary.trim(),
-    badge || 'Mới',
-    JSON.stringify(descArr),
-    JSON.stringify(reqArr),
-    req.params.id
-  );
+  `).run(title.trim(), company.trim(), location || 'Hà Nội', category || 'hr', salary.trim(), badge || 'Mới', JSON.stringify(descArr), JSON.stringify(reqArr), req.params.id);
 
   res.json({ success: true });
 });
 
-// Xóa tin tuyển dụng
 app.delete('/api/jobs/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM jobs WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
-app.listen(PORT, () => console.log(`Hệ thống Quản trị Tuyển dụng bảo mật tại http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Hệ thống đang chạy tại http://localhost:${PORT}`));

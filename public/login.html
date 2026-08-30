@@ -17,11 +17,11 @@
     </div>
 
     <!-- Thanh Tab chuyển Đăng Nhập / Đăng Ký -->
-    <div style="display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:24px;">
-      <button type="button" id="tab-login-btn" onclick="toggleAuth('login')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#0b57d0; border-bottom:2px solid #0b57d0; cursor:pointer; font-size:14px;">
+    <div id="auth-tabs" style="display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:24px;">
+      <button type="button" id="tab-login-btn" onclick="switchAuthMode('login')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#0b57d0; border-bottom:2px solid #0b57d0; cursor:pointer; font-size:14px;">
         Đăng Nhập
       </button>
-      <button type="button" id="tab-register-btn" onclick="toggleAuth('register')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#6b7280; border-bottom:2px solid transparent; cursor:pointer; font-size:14px;">
+      <button type="button" id="tab-register-btn" onclick="switchAuthMode('register')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#6b7280; border-bottom:2px solid transparent; cursor:pointer; font-size:14px;">
         Đăng Ký Tài Khoản
       </button>
     </div>
@@ -32,12 +32,15 @@
         <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:5px;">Tên đăng nhập</label>
         <input type="text" id="l-username" required placeholder="admin hoặc tên tài khoản" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
       </div>
-      <div style="margin-bottom:20px;">
+      <div style="margin-bottom:8px;">
         <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:5px;">Mật khẩu</label>
         <div style="position:relative;">
           <input type="password" id="l-password" required placeholder="Nhập mật khẩu" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
           <i class="fa-regular fa-eye" onclick="togglePassVisibility('l-password', this)" style="position:absolute; right:12px; top:12px; color:#9ca3af; cursor:pointer;"></i>
         </div>
+      </div>
+      <div style="text-align:right; margin-bottom:18px;">
+        <a href="#" onclick="switchAuthMode('forgot')" style="font-size:12px; color:#0b57d0; text-decoration:none;">Quên tên đăng nhập / Mật khẩu?</a>
       </div>
       <button type="submit" class="btn-search" style="width:100%; padding:12px; font-size:14px; font-weight:600; border-radius:6px;">ĐĂNG NHẬP</button>
     </form>
@@ -66,6 +69,41 @@
       <button type="submit" class="btn-search" style="width:100%; padding:12px; font-size:14px; font-weight:600; background:#10b981; border-radius:6px;">TẠO TÀI KHOẢN MỚI</button>
     </form>
 
+    <!-- 3. FORM QUÊN MẬT KHẨU / LẤY LẠI TÊN ĐĂNG NHẬP -->
+    <div id="forgot-form" style="display:none;">
+      <h3 style="font-size:15px; color:#111827; margin-top:0; margin-bottom:6px;">Khôi phục tài khoản</h3>
+      <p style="font-size:13px; color:#6b7280; margin-bottom:16px; line-height:1.4;">Nhập email đã đăng ký để nhận Tên đăng nhập và Mã OTP khôi phục mật khẩu qua hộp thư của bạn.</p>
+      
+      <!-- Bước 1: Nhập Email -->
+      <div id="step-1-forgot">
+        <div style="margin-bottom:14px;">
+          <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:5px;">Email đã đăng ký</label>
+          <input type="email" id="f-email" placeholder="VD: ungvien@gmail.com" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
+        </div>
+        <button type="button" onclick="requestOTP()" class="btn-search" style="width:100%; padding:11px; font-size:14px; font-weight:600; border-radius:6px; margin-bottom:12px;">GỬI MÃ XÁC NHẬN QUA EMAIL</button>
+      </div>
+
+      <!-- Bước 2: Nhập OTP và Mật khẩu mới -->
+      <div id="step-2-forgot" style="display:none;">
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Mã OTP (6 chữ số)</label>
+          <input type="text" id="f-token" placeholder="VD: 123456" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Mật khẩu mới</label>
+          <div style="position:relative;">
+            <input type="password" id="f-newpass" placeholder="Nhập mật khẩu mới" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
+            <i class="fa-regular fa-eye" onclick="togglePassVisibility('f-newpass', this)" style="position:absolute; right:12px; top:10px; color:#9ca3af; cursor:pointer;"></i>
+          </div>
+        </div>
+        <button type="button" onclick="confirmResetPassword()" class="btn-search" style="width:100%; padding:11px; font-size:14px; font-weight:600; background:#10b981; border-radius:6px; margin-bottom:12px;">ĐẶT LẠI MẬT KHẨU</button>
+      </div>
+
+      <div style="text-align:center; margin-top:8px;">
+        <a href="#" onclick="switchAuthMode('login')" style="font-size:13px; color:#6b7280; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại đăng nhập</a>
+      </div>
+    </div>
+
     <div id="auth-msg" style="margin-top:16px; font-size:13px; text-align:center;"></div>
     
     <div style="margin-top:24px; text-align:center;">
@@ -74,18 +112,17 @@
   </div>
 
   <script>
-    function toggleAuth(mode) {
-      const isLogin = mode === 'login';
-      document.getElementById('login-form').style.display = isLogin ? 'block' : 'none';
-      document.getElementById('register-form').style.display = isLogin ? 'none' : 'block';
-      
-      document.getElementById('tab-login-btn').style.color = isLogin ? '#0b57d0' : '#6b7280';
-      document.getElementById('tab-login-btn').style.borderBottomColor = isLogin ? '#0b57d0' : 'transparent';
-      
-      document.getElementById('tab-register-btn').style.color = !isLogin ? '#10b981' : '#6b7280';
-      document.getElementById('tab-register-btn').style.borderBottomColor = !isLogin ? '#10b981' : 'transparent';
-      
+    function switchAuthMode(mode) {
+      document.getElementById('login-form').style.display = mode === 'login' ? 'block' : 'none';
+      document.getElementById('register-form').style.display = mode === 'register' ? 'block' : 'none';
+      document.getElementById('forgot-form').style.display = mode === 'forgot' ? 'block' : 'none';
+      document.getElementById('auth-tabs').style.display = mode === 'forgot' ? 'none' : 'flex';
       document.getElementById('auth-msg').innerHTML = '';
+      
+      if(mode === 'forgot') {
+        document.getElementById('step-1-forgot').style.display = 'block';
+        document.getElementById('step-2-forgot').style.display = 'none';
+      }
     }
 
     function togglePassVisibility(inputId, icon) {
@@ -153,12 +190,64 @@
         if (data.success) {
           msg.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ ${data.message} Vui lòng chuyển sang Đăng nhập.</span>`;
           document.getElementById('register-form').reset();
-          setTimeout(() => toggleAuth('login'), 1200);
+          setTimeout(() => switchAuthMode('login'), 1500);
         } else {
           msg.innerHTML = `<span style="color:#dc2626; font-weight:600;">✕ ${data.message}</span>`;
         }
       } catch (err) {
         msg.innerHTML = '<span style="color:#dc2626;">Lỗi đăng ký tài khoản!</span>';
+      }
+    }
+
+    async function requestOTP() {
+      const email = document.getElementById('f-email').value;
+      const msg = document.getElementById('auth-msg');
+      if (!email) return alert('Vui lòng nhập địa chỉ email!');
+
+      msg.innerHTML = '<span style="color:#6b7280;"><i class="fa-solid fa-spinner fa-spin"></i> Đang gửi mã xác nhận qua Gmail...</span>';
+      try {
+        const res = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (data.success) {
+          msg.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ ${data.message}</span>`;
+          document.getElementById('step-1-forgot').style.display = 'none';
+          document.getElementById('step-2-forgot').style.display = 'block';
+        } else {
+          msg.innerHTML = `<span style="color:#dc2626; font-weight:600;">✕ ${data.message}</span>`;
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
+      }
+    }
+
+    async function confirmResetPassword() {
+      const email = document.getElementById('f-email').value;
+      const token = document.getElementById('f-token').value;
+      const newPassword = document.getElementById('f-newpass').value;
+      const msg = document.getElementById('auth-msg');
+
+      if (!token || !newPassword) return alert('Vui lòng điền mã OTP và mật khẩu mới!');
+
+      msg.innerHTML = '<span style="color:#6b7280;"><i class="fa-solid fa-spinner fa-spin"></i> Đang cập nhật mật khẩu mới...</span>';
+      try {
+        const res = await fetch('/api/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, token, newPassword })
+        });
+        const data = await res.json();
+        if (data.success) {
+          msg.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ ${data.message} Vui lòng đăng nhập lại.</span>`;
+          setTimeout(() => switchAuthMode('login'), 2000);
+        } else {
+          msg.innerHTML = `<span style="color:#dc2626; font-weight:600;">✕ ${data.message}</span>`;
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
       }
     }
   </script>
