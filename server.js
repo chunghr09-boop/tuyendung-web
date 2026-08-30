@@ -126,7 +126,7 @@ db.exec(`
   );
 `);
 
-// Tài khoản Admin mặc định
+// Tạo tài khoản Admin mặc định
 const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
 if (!existingAdmin) {
   const hashedAdminPass = bcrypt.hashSync('admin123', 10);
@@ -134,6 +134,117 @@ if (!existingAdmin) {
     INSERT INTO users (id, fullname, email, username, password, role, status)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run('user-admin-root', 'Quản Trị Viên Hệ Thống', 'chunghr09@gmail.com', 'admin', hashedAdminPass, 'admin', 'active');
+}
+
+// Dữ liệu 5 vị trí mẫu
+const initialJobs = [
+  {
+    id: 'job-1',
+    title: 'Chuyên Viên C&B (Lương Thưởng & Phúc Lợi)',
+    company: 'Tập đoàn Đông Dương',
+    location: 'Hà Nội',
+    category: 'hr',
+    salary: '12.000.000 - 18.000.000 VNĐ',
+    badge: 'Tuyển gấp',
+    description: [
+      'Thực hiện tính lương, thưởng, phụ cấp và chế độ đãi ngộ hàng tháng cho CBNV.',
+      'Quản lý hồ sơ trích nộp BHXH, BHYT, BHTN và quyết toán Thuế TNCN theo luật định.',
+      'Tham mưu hoàn thiện hệ thống thang bảng lương, quy chế đánh giá KPIs doanh nghiệp.'
+    ],
+    requirements: [
+      'Tốt nghiệp ĐH chuyên ngành Quản trị nhân lực, Luật, Kinh tế lao động hoặc liên quan.',
+      'Nắm vững Bộ luật Lao động 2019, Luật BHXH và các quy định pháp luật tiền lương.',
+      'Sử dụng thành thạo Microsoft Excel nâng cao và phần mềm quản trị nhân sự.'
+    ]
+  },
+  {
+    id: 'job-2',
+    title: 'Chuyên Viên Tuyển Dụng & Thu Hút Nhân Tài (Talent Acquisition)',
+    company: 'Tập đoàn Đông Dương',
+    location: 'Hà Nội',
+    category: 'hr',
+    salary: '10.000.000 - 16.000.000 VNĐ',
+    badge: 'Hot',
+    description: [
+      'Tiếp nhận nhu cầu nhân sự, lập kế hoạch và triển khai các chiến dịch tuyển dụng.',
+      'Tìm kiếm, sàng lọc hồ sơ ứng viên và trực tiếp tổ chức các buổi phỏng vấn chuyên môn.',
+      'Phát triển thương hiệu tuyển dụng (Employer Branding) qua mạng xã hội và ngày hội việc làm.'
+    ],
+    requirements: [
+      'Tốt nghiệp Đại học chuyên ngành Quản trị nhân lực, Quản trị kinh doanh hoặc Ngoại ngữ.',
+      'Kỹ năng giao tiếp, đàm phán và thuyết phục ứng viên xuất sắc.',
+      'Có tư duy nhạy bén về thị trường lao động và nguồn cung ứng viên.'
+    ]
+  },
+  {
+    id: 'job-3',
+    title: 'Chuyên Viên Đào Tạo & Phát Triển Năng Lực (L&D Specialist)',
+    company: 'Tập đoàn Đông Dương',
+    location: 'Đà Nẵng',
+    category: 'hr',
+    salary: '11.000.000 - 17.000.000 VNĐ',
+    badge: 'Mới',
+    description: [
+      'Khảo sát và phân tích nhu cầu đào tạo (TNA) định kỳ cho các phòng ban.',
+      'Thiết kế khung chương trình hội nhập cho nhân viên mới và đào tạo nâng cao nghiệp vụ.',
+      'Đo lường, đánh giá hiệu quả sau đào tạo và quản lý ngân sách đào tạo năm.'
+    ],
+    requirements: [
+      'Cử nhân ngành Quản trị nhân lực, Sư phạm, Tâm lý học tổ chức hoặc liên quan.',
+      'Kỹ năng đứng lớp, truyền đạt thông tin và biên soạn tài liệu giảng dạy tốt.',
+      'Sáng tạo, chủ động và có tinh thần trách nhiệm cao.'
+    ]
+  },
+  {
+    id: 'job-4',
+    title: 'Chuyên Viên Quan Hệ Lao Động & Truyền Thông Nội Bộ',
+    company: 'Tập đoàn Đông Dương',
+    location: 'TP. Hồ Chí Minh',
+    category: 'hr',
+    salary: '10.000.000 - 15.000.000 VNĐ',
+    badge: 'Mới',
+    description: [
+      'Xây dựng, duy trì văn hóa doanh nghiệp và tổ chức các sự kiện gắn kết nội bộ.',
+      'Quản lý hợp đồng lao động, giải quyết khiếu nại, tranh chấp lao động và kỷ luật.',
+      'Tổ chức đối thoại tại nơi làm việc và hội nghị người lao động định kỳ.'
+    ],
+    requirements: [
+      'Tốt nghiệp ĐH chuyên ngành Quản trị nhân sự, Luật Lao động hoặc Báo chí - Truyền thông.',
+      'Am hiểu sâu sắc về quan hệ lao động, kỷ luật lao động và an toàn vệ sinh lao động.',
+      'Năng động, nhiệt huyết và có khả năng kết nối tập thể.'
+    ]
+  },
+  {
+    id: 'job-5',
+    title: 'Trưởng Nhóm Nhân Sự Tổng Hợp (HR Generalist Lead)',
+    company: 'Tập đoàn Đông Dương',
+    location: 'TP. Hồ Chí Minh',
+    category: 'hr',
+    salary: '18.000.000 - 25.000.000 VNĐ',
+    badge: 'Lương cao',
+    description: [
+      'Quản lý và điều phối toàn diện các mảng: Tuyển dụng, C&B, Đào tạo và Quan hệ lao động.',
+      'Tư vấn cho Ban Giám đốc về cơ cấu tổ chức và định biên nhân sự tối ưu.',
+      'Giám sát việc tuân thủ nội quy lao động và chính sách nhân sự toàn tập đoàn.'
+    ],
+    requirements: [
+      'Tối thiểu 3 năm kinh nghiệm trong ngành Quản trị Nhân sự (từng làm HR Generalist).',
+      'Tư duy quản trị chiến lược, khả năng phân tích số liệu nhân sự (HR Analytics).',
+      'Kỹ năng lãnh đạo, giải quyết vấn đề và chịu được áp lực cao.'
+    ]
+  }
+];
+
+// Tự động nạp lại 5 việc làm mẫu nếu bảng jobs trống
+const jobCheck = db.prepare('SELECT COUNT(*) as count FROM jobs').get().count;
+if (jobCheck === 0) {
+  const insertStmt = db.prepare(`
+    INSERT INTO jobs (id, title, company, location, category, salary, badge, description, requirements, employer_email)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const j of initialJobs) {
+    insertStmt.run(j.id, j.title, j.company, j.location, j.category, j.salary, j.badge, JSON.stringify(j.description), JSON.stringify(j.requirements), SENDER_EMAIL);
+  }
 }
 
 // Middleware phân quyền
