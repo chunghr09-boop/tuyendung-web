@@ -3,13 +3,14 @@ const multer = require('multer');
 const session = require('express-session');
 const Database = require('better-sqlite3');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ==================== CẤU HÌNH EMAIL SMTP SSL ====================
+// ==================== CẤU HÌNH GỬI EMAIL SMTP SSL ====================
 const SENDER_EMAIL = process.env.SENDER_EMAIL || 'chunghr09@gmail.com';
 const SENDER_APP_PASSWORD = process.env.SENDER_APP_PASSWORD || 'dkqoodlefbksluxz';
 const HR_EMAIL = process.env.HR_EMAIL || 'chunghr09@gmail.com';
@@ -74,7 +75,7 @@ async function sendNotificationEmails({ fullname, email, jobTitle, cvOriginalNam
   }
 }
 
-// ==================== DATABASE SQLITE (USERS & ATS) ====================
+// ==================== DATABASE SQLITE (BẢO MẬT USER & ATS) ====================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -118,13 +119,14 @@ db.exec(`
   );
 `);
 
-// Tạo tài khoản Admin mặc định nếu chưa tồn tại
-const adminUser = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
-if (!adminUser) {
+// Tạo tài khoản Admin có mật khẩu mã hóa bảo mật
+const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
+if (!existingAdmin) {
+  const hashedAdminPass = bcrypt.hashSync('admin123', 10);
   db.prepare(`
     INSERT INTO users (id, fullname, email, username, password, role, status)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run('user-admin-root', 'Quản Trị Viên', 'chunghr09@gmail.com', 'admin', 'admin123', 'admin', 'active');
+  `).run('user-admin-root', 'Quản Trị Viên HR', 'chunghr09@gmail.com', 'admin', hashedAdminPass, 'admin', 'active');
 }
 
 // Dữ liệu 5 vị trí mẫu
@@ -286,35 +288,50 @@ const requireAdmin = (req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== USER AUTHENTICATION APIS ====================
+// ==================== BẢO MẬT TÀI KHOẢN (AUTH APIS) ====================
 
-// Đăng ký tài khoản ứng viên mới
+// Đăng ký ứng viên (Mã hóa mật khẩu bằng bcrypt)
 app.post('/api/register', (req, res) => {
   const { fullname, email, username, password } = req.body;
   if (!fullname || !email || !username || !password) {
-    return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin!' });
+    return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ các mục bắt buộc!' });
   }
 
   const existing = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(username.trim(), email.trim());
   if (existing) {
-    return res.status(400).json({ success: false, message: 'Tên đăng nhập hoặc Email đã tồn tại!' });
+    return res.status(400).json({ success: false, message: 'Tên đăng nhập hoặc Email này đã tồn tại!' });
   }
 
+  // Mã hóa băm an toàn 10 vòng
+  const hashedPassword = bcrypt.hashSync(password.trim(), 10);
   const id = 'user-' + Date.now();
+
   db.prepare(`
     INSERT INTO users (id, fullname, email, username, password, role, status)
     VALUES (?, ?, ?, ?, ?, 'user', 'active')
-  `).run(id, fullname.trim(), email.trim(), username.trim(), password.trim());
+  `).run(id, fullname.trim(), email.trim(), username.trim(), hashedPassword);
 
   res.json({ success: true, message: 'Đăng ký tài khoản thành công!' });
 });
 
-// Đăng nhập hệ thống (cho cả Admin và Ứng viên)
+// Đăng nhập an toàn
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE username = ? AND password = ?').get(username.trim(), password.trim());
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username.trim());
 
   if (!user) {
+    return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
+  }
+
+  // So khớp mật khẩu đã băm (hoặc dự phòng pass admin mặc định)
+  let isMatch = false;
+  if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+    isMatch = bcrypt.compareSync(password.trim(), user.password);
+  } else {
+    isMatch = (user.password === password.trim());
+  }
+
+  if (!isMatch) {
     return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
   }
 
@@ -333,7 +350,6 @@ app.post('/api/login', (req, res) => {
   res.json({ success: true, user: req.session.user });
 });
 
-// Lấy thông tin phiên đăng nhập hiện tại
 app.get('/api/current-user', (req, res) => {
   if (req.session && req.session.user) {
     res.json({ loggedIn: true, user: req.session.user });
@@ -347,15 +363,12 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// ==================== ADMIN QUẢN LÝ USER APIS ====================
-
-// Lấy danh sách tất cả người dùng
+// ==================== ADMIN QUẢN TRỊ USERS ====================
 app.get('/api/admin/users', requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT id, fullname, email, username, role, status, created_at FROM users ORDER BY rowid DESC').all();
   res.json(rows);
 });
 
-// Khóa / Mở khóa tài khoản
 app.patch('/api/admin/users/:id/status', requireAdmin, (req, res) => {
   const { status } = req.body;
   const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
@@ -368,7 +381,6 @@ app.patch('/api/admin/users/:id/status', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-// Xóa tài khoản
 app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
   const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (targetUser && targetUser.username === 'admin') {
@@ -379,7 +391,7 @@ app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-// ==================== PUBLIC JOBS & APPLY ====================
+// ==================== PUBLIC API JOBS & APPLY ====================
 app.get('/api/jobs', (req, res) => {
   const { keyword, location, category } = req.query;
   let query = 'SELECT * FROM jobs WHERE 1=1';
@@ -533,4 +545,4 @@ app.delete('/api/jobs/:id', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-app.listen(PORT, () => console.log(`Hệ thống Quản trị Tuyển dụng sẵn sàng tại http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Hệ thống Quản trị Tuyển dụng bảo mật tại http://localhost:${PORT}`));
