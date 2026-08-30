@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng Nhập Quản Trị Viên</title>
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3850/3850285.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body style="background:#eef2f6; display:flex; justify-content:center; align-items:center; min-height:100vh;">
+
+  <div class="login-card">
+    <div class="login-header">
+      <i class="fa-solid fa-shield-halved" style="font-size:36px; color:#0b57d0;"></i>
+      <h2>Đăng Nhập Quản Trị</h2>
+      <p>Cổng truy cập dành cho Nhà Tuyển Dụng</p>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>Tài khoản</label>
+        <input type="text" id="username" placeholder="Nhập tài khoản (admin)" required>
+      </div>
+
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="password" placeholder="Nhập mật khẩu (admin123)" required>
+      </div>
+
+      <div id="error-msg" style="color:#dc2626; font-size:13px; margin-bottom:12px; display:none;"></div>
+
+      <button type="submit" class="btn-submit" style="background:#0b57d0;">ĐĂNG NHẬP</button>
+      <a href="/" style="display:block; text-align:center; margin-top:15px; color:#6b7280; text-decoration:none; font-size:13px;">← Quay về trang chủ</a>
+    </form>
+  </div>
+
+  <script>
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errEl = document.getElementById('error-msg');
+
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        window.location.href = '/admin';
+      } else {
+        errEl.innerText = data.message || 'Đăng nhập thất bại!';
+        errEl.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>

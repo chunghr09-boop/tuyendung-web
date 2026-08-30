@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Quản Lý Tuyển Dụng</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="admin-body">
+
+  <header>
+    <div class="header-container">
+      <div class="logo">
+        <h2>Job<span>Admin</span> <small style="font-size:14px; font-weight:normal; color:#6b7280;">| Bảng Quản Trị Tuyển Dụng</small></h2>
+      </div>
+      <nav style="display:flex; align-items:center; gap:15px;">
+  <a href="/" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Trang Việc Làm</a>
+  <button onclick="handleLogout()" style="background:#fee2e2; color:#dc2626; border:none; padding:8px 14px; border-radius:4px; font-weight:bold; cursor:pointer;">
+    <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+  </button>
+</nav>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <div class="dashboard-stats">
+      <div class="stat-card">
+        <i class="fa-solid fa-users icon-blue"></i>
+        <div>
+          <h4 id="total-count">0</h4>
+          <p>Tổng số hồ sơ ứng tuyển</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <i class="fa-solid fa-briefcase icon-green"></i>
+        <div>
+          <h4>5 Vị trí</h4>
+          <p>Đang mở tuyển dụng</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-header">
+        <h3>Danh Sách Ứng Viên & Hồ Sơ CV</h3>
+        <button onclick="loadApplicants()" class="btn-search" style="padding:6px 14px; font-size:13px;"><i class="fa-solid fa-rotate-right"></i> Làm mới</button>
+      </div>
+
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Họ và Tên</th>
+            <th>Email</th>
+            <th>Vị Trí Ứng Tuyển</th>
+            <th>Tên File CV</th>
+            <th>Dung Lượng</th>
+            <th>Thời Gian Nộp</th>
+            <th style="text-align:center;">Hành Động</th>
+          </tr>
+        </thead>
+        <tbody id="applicant-rows">
+          <tr>
+            <td colspan="8" style="text-align:center; padding:30px; color:#9ca3af;">Đang tải dữ liệu...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    async function loadApplicants() {
+      try {
+        const response = await fetch('/api/applicants');
+        const data = await response.json();
+        
+        document.getElementById('total-count').innerText = data.length;
+        const tbody = document.getElementById('applicant-rows');
+        
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#6b7280;">Chưa có hồ sơ nào được gửi đến.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.map((item, index) => `
+          <tr>
+            <td><strong>${index + 1}</strong></td>
+            <td><strong>${item.fullname}</strong></td>
+            <td><a href="mailto:${item.email}" style="color:#0b57d0;">${item.email}</a></td>
+            <td><span class="badge" style="background:#e0e7ff; color:#3730a3;">${item.jobTitle || 'Chuyên viên C&B'}</span></td>
+            <td><i class="fa-regular fa-file-pdf" style="color:#e11d48; margin-right:5px;"></i> ${item.originalName}</td>
+            <td><span class="file-size-badge">${item.fileSize}</span></td>
+            <td style="color:#6b7280; font-size:12px;">${item.appliedAt}</td>
+            <td style="text-align:center;">
+              <a href="/download/${item.savedName}" class="btn-download" title="Tải CV về máy">
+                <i class="fa-solid fa-download"></i> Tải CV
+              </a>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Lỗi khi tải dữ liệu:', err);
+      }
+    }
+    loadApplicants();
+async function handleLogout() {
+  await fetch('/api/logout', { method: 'POST' });
+  window.location.href = '/login.html';
+}
+  </script>
+</body>
+</html>

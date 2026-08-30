@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cổng Tuyển Dụng & Việc Làm</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <div class="logo">
+        <h2 onclick="resetFilter()" style="cursor:pointer;">Job<span>Connect</span></h2>
+      </div>
+      <nav>
+        <a href="/" class="active">Việc làm</a>
+        <a href="/admin" class="btn-login"><i class="fa-solid fa-user-shield"></i> Trang Tuyển Dụng</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Thanh tìm kiếm -->
+  <section class="hero-section">
+    <div class="search-box">
+      <div class="search-input">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="search-keyword" placeholder="Từ khóa: Chức danh, vị trí, công ty..." onkeypress="handleEnter(event)">
+      </div>
+      <div class="search-input location">
+        <i class="fa-solid fa-location-dot"></i>
+        <select id="search-location" onchange="fetchJobs()">
+          <option value="all">Tất cả địa điểm</option>
+          <option value="Hà Nội">Hà Nội</option>
+          <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+          <option value="Đà Nẵng">Đà Nẵng</option>
+        </select>
+      </div>
+      <button class="btn-search" onclick="fetchJobs()"><i class="fa-solid fa-magnifying-glass"></i> TÌM VIỆC</button>
+    </div>
+  </section>
+
+  <!-- Khu vực hiển thị việc làm -->
+  <main class="main-container">
+    <!-- Cột Danh mục Ngành nghề -->
+    <aside class="category-sidebar">
+      <div class="category-header">
+        <i class="fa-solid fa-bars"></i>
+        <span>NGÀNH NGHỀ</span>
+      </div>
+      <ul class="category-list">
+        <li class="active-cat" onclick="selectCategory('all', this)"><span>Tất cả ngành nghề</span> <i class="fa-solid fa-chevron-right"></i></li>
+        <li onclick="selectCategory('hr', this)"><span>Quản trị Nhân sự / C&B</span> <i class="fa-solid fa-chevron-right"></i></li>
+        <li onclick="selectCategory('finance', this)"><span>Tài chính / Bảo hiểm</span> <i class="fa-solid fa-chevron-right"></i></li>
+        <li onclick="selectCategory('marketing', this)"><span>Marketing / Truyền thông</span> <i class="fa-solid fa-chevron-right"></i></li>
+        <li onclick="selectCategory('it', this)"><span>Công nghệ thông tin</span> <i class="fa-solid fa-chevron-right"></i></li>
+      </ul>
+    </aside>
+
+    <!-- Cột Danh sách việc làm -->
+    <section class="job-list-panel">
+      <div class="panel-header">
+        <h3>Việc Làm Phù Hợp (<span id="job-count">0</span>)</h3>
+      </div>
+      <div id="job-list-container" class="job-list">
+        <!-- Render danh sách qua Javascript -->
+      </div>
+    </section>
+
+    <!-- Cột Chi tiết công việc & Form ứng tuyển -->
+    <section class="job-detail-panel" id="job-detail-view">
+      <!-- Render chi tiết việc làm qua Javascript -->
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 JobConnect Platform. Nền tảng kết nối nhân tài & doanh nghiệp.</p>
+  </footer>
+
+  <script>
+    let currentJobs = [];
+    let selectedCategory = 'all';
+    let activeJobId = null;
+
+    async function fetchJobs() {
+      const keyword = document.getElementById('search-keyword').value;
+      const location = document.getElementById('search-location').value;
+
+      let url = `/api/jobs?category=${selectedCategory}&location=${location}&keyword=${encodeURIComponent(keyword)}`;
+      const res = await fetch(url);
+      currentJobs = await res.json();
+
+      document.getElementById('job-count').innerText = currentJobs.length;
+      renderJobList();
+      
+      if (currentJobs.length > 0) {
+        // Mặc định chọn công việc đầu tiên nếu chưa chọn hoặc ID không khớp
+        const exists = currentJobs.find(j => j.id === activeJobId);
+        selectJob(exists ? activeJobId : currentJobs[0].id);
+      } else {
+        document.getElementById('job-detail-view').innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-folder-open"></i>
+            <p>Không tìm thấy công việc phù hợp với tiêu chí tìm kiếm.</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderJobList() {
+      const container = document.getElementById('job-list-container');
+      if (currentJobs.length === 0) {
+        container.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">Không có việc làm nào.</div>';
+        return;
+      }
+
+      container.innerHTML = currentJobs.map(job => `
+        <div class="job-item-card ${job.id === activeJobId ? 'active' : ''}" onclick="selectJob('${job.id}')">
+          <div class="job-item-top">
+            <span class="badge">${job.badge}</span>
+            <span class="location-tag"><i class="fa-solid fa-location-dot"></i> ${job.location}</span>
+          </div>
+          <h4>${job.title}</h4>
+          <p class="company">${job.company}</p>
+          <p class="salary">${job.salary}</p>
+        </div>
+      `).join('');
+    }
+
+    function selectJob(id) {
+      activeJobId = id;
+      renderJobList();
+      const job = currentJobs.find(j => j.id === id);
+      if (!job) return;
+
+      const detailView = document.getElementById('job-detail-view');
+      detailView.innerHTML = `
+        <div class="job-card">
+          <div class="job-header">
+            <span class="badge">${job.badge}</span>
+            <h2>${job.title}</h2>
+            <p class="company-name"><i class="fa-solid fa-building"></i> ${job.company} - <strong>${job.location}</strong></p>
+            <p class="salary"><i class="fa-solid fa-money-bill-wave"></i> ${job.salary}</p>
+          </div>
+
+          <div class="job-body">
+            <h3>Mô tả công việc</h3>
+            <ul>${job.description.map(item => `<li>${item}</li>`).join('')}</ul>
+
+            <h3>Yêu cầu ứng viên</h3>
+            <ul>${job.requirements.map(item => `<li>${item}</li>`).join('')}</ul>
+          </div>
+
+          <div class="apply-box">
+            <h3>Nộp hồ sơ ứng tuyển: <span>${job.title}</span></h3>
+            <form action="/apply" method="POST" enctype="multipart/form-data">
+              <input type="hidden" name="jobTitle" value="${job.title}">
+              <div class="form-group">
+                <label>Họ và tên</label>
+                <input type="text" name="fullname" placeholder="Nguyễn Văn A" required>
+              </div>
+              <div class="form-group">
+                <label>Email liên hệ</label>
+                <input type="email" name="email" placeholder="example@email.com" required>
+              </div>
+              <div class="form-group">
+                <label>Tải CV (PDF, DOCX)</label>
+                <input type="file" name="cv" accept=".pdf,.doc,.docx" required>
+              </div>
+              <button type="submit" class="btn-submit">GỬI HỒ SƠ ỨNG TUYỂN</button>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectCategory(cat, el) {
+      selectedCategory = cat;
+      document.querySelectorAll('.category-list li').forEach(li => li.classList.remove('active-cat'));
+      el.classList.add('active-cat');
+      fetchJobs();
+    }
+
+    function handleEnter(e) {
+      if (e.key === 'Enter') fetchJobs();
+    }
+
+    function resetFilter() {
+      document.getElementById('search-keyword').value = '';
+      document.getElementById('search-location').value = 'all';
+      selectedCategory = 'all';
+      document.querySelectorAll('.category-list li').forEach((li, idx) => {
+        if (idx === 0) li.classList.add('active-cat');
+        else li.classList.remove('active-cat');
+      });
+      fetchJobs();
+    }
+
+    // Tự động tải danh sách khi mở web
+    fetchJobs();
+  </script>
+</body>
+</html>

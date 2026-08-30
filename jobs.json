@@ -1,0 +1,19 @@
+[
+  {
+    "id": "job-1",
+    "title": "Chuyên Viên C&B (Lương Thưởng & Phúc Lợi)",
+    "company": "Tập đoàn Đông Dương",
+    "location": "Hà Nội",
+    "category": "hr",
+    "salary": "12.000.000 - 18.000.000 VNĐ",
+    "badge": "Tuyển gấp",
+    "description": [
+      "Quản lý chính sách đãi ngộ, hệ thống thang bảng lương và KPIs.",
+      "Thực hiện tính lương, thưởng và chế độ BHXH, BHYT, BHTN theo luật định."
+    ],
+    "requirements": [
+      "Tốt nghiệp ĐH chuyên ngành Quản trị nhân lực, Luật hoặc liên quan.",
+      "Nắm vững Bộ luật Lao động và quy định BHXH hiện hành."
+    ]
+  }
+]
