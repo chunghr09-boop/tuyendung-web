@@ -16,21 +16,17 @@
       <p style="margin:0; color:#6b7280; font-size:13px;">Tập đoàn Đông Dương Career Portal</p>
     </div>
 
-    <!-- Thanh Tab chuyển Đăng Nhập / Đăng Ký -->
+    <!-- Thanh Tab -->
     <div id="auth-tabs" style="display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:24px;">
-      <button type="button" id="tab-login-btn" onclick="switchAuthMode('login')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#0b57d0; border-bottom:2px solid #0b57d0; cursor:pointer; font-size:14px;">
-        Đăng Nhập
-      </button>
-      <button type="button" id="tab-register-btn" onclick="switchAuthMode('register')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#6b7280; border-bottom:2px solid transparent; cursor:pointer; font-size:14px;">
-        Đăng Ký Tài Khoản
-      </button>
+      <button type="button" id="tab-login-btn" onclick="switchAuthMode('login')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#0b57d0; border-bottom:2px solid #0b57d0; cursor:pointer; font-size:14px;">Đăng Nhập</button>
+      <button type="button" id="tab-register-btn" onclick="switchAuthMode('register')" style="flex:1; padding:10px; border:none; background:none; font-weight:700; color:#6b7280; border-bottom:2px solid transparent; cursor:pointer; font-size:14px;">Đăng Ký Tài Khoản</button>
     </div>
 
     <!-- 1. FORM ĐĂNG NHẬP -->
     <form id="login-form" onsubmit="handleLogin(event)">
       <div style="margin-bottom:14px;">
         <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:5px;">Tên đăng nhập</label>
-        <input type="text" id="l-username" required placeholder="admin hoặc tên tài khoản" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
+        <input type="text" id="l-username" required placeholder="Nhập tên đăng nhập" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
       </div>
       <div style="margin-bottom:8px;">
         <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:5px;">Mật khẩu</label>
@@ -40,74 +36,68 @@
         </div>
       </div>
       <div style="text-align:right; margin-bottom:18px;">
-        <a href="#" onclick="switchAuthMode('forgot')" style="font-size:12px; color:#0b57d0; text-decoration:none;">Quên tên đăng nhập / Mật khẩu?</a>
+        <a href="#" onclick="switchAuthMode('forgot')" style="font-size:12px; color:#0b57d0; text-decoration:none;">Quên mật khẩu?</a>
       </div>
       <button type="submit" class="btn-search" style="width:100%; padding:12px; font-size:14px; font-weight:600; border-radius:6px;">ĐĂNG NHẬP</button>
     </form>
 
-    <!-- 2. FORM ĐĂNG KÝ (ỨNG VIÊN) -->
+    <!-- 2. FORM ĐĂNG KÝ -->
     <form id="register-form" onsubmit="handleRegister(event)" style="display:none;">
       <div style="margin-bottom:12px;">
-        <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Họ và Tên ứng viên *</label>
+        <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Bạn đăng ký với tư cách *</label>
+        <select id="r-role" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; background:#fff; box-sizing:border-box;">
+          <option value="user">👤 Ứng Viên Tìm Việc</option>
+          <option value="employer">🏢 Nhà Tuyển Dụng (Đăng Tin & Nhận CV)</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Họ và Tên *</label>
         <input type="text" id="r-fullname" required placeholder="VD: Nguyễn Văn A" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
       </div>
       <div style="margin-bottom:12px;">
-        <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Email liên hệ *</label>
-        <input type="email" id="r-email" required placeholder="VD: ungvien@gmail.com" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
+        <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Email nhận CV / thông báo *</label>
+        <input type="email" id="r-email" required placeholder="VD: email@gmail.com" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
       </div>
       <div style="margin-bottom:12px;">
         <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Tên đăng nhập *</label>
-        <input type="text" id="r-username" required placeholder="Viết liền không dấu (VD: hungnguyen)" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
+        <input type="text" id="r-username" required placeholder="Viết liền không dấu" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
       </div>
       <div style="margin-bottom:18px;">
-        <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Mật khẩu bảo mật *</label>
+        <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Mật khẩu *</label>
         <div style="position:relative;">
           <input type="password" id="r-password" required minlength="6" placeholder="Tối thiểu 6 ký tự" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
           <i class="fa-regular fa-eye" onclick="togglePassVisibility('r-password', this)" style="position:absolute; right:12px; top:10px; color:#9ca3af; cursor:pointer;"></i>
         </div>
       </div>
-      <button type="submit" class="btn-search" style="width:100%; padding:12px; font-size:14px; font-weight:600; background:#10b981; border-radius:6px;">TẠO TÀI KHOẢN MỚI</button>
+      <button type="submit" class="btn-search" style="width:100%; padding:12px; font-size:14px; font-weight:600; background:#10b981; border-radius:6px;">TẠO TÀI KHOẢN</button>
     </form>
 
-    <!-- 3. FORM QUÊN MẬT KHẨU / LẤY LẠI TÊN ĐĂNG NHẬP -->
+    <!-- 3. FORM QUÊN MẬT KHẨU -->
     <div id="forgot-form" style="display:none;">
       <h3 style="font-size:15px; color:#111827; margin-top:0; margin-bottom:6px;">Khôi phục tài khoản</h3>
-      <p style="font-size:13px; color:#6b7280; margin-bottom:16px; line-height:1.4;">Nhập email đã đăng ký để nhận Tên đăng nhập và Mã OTP khôi phục mật khẩu qua hộp thư của bạn.</p>
+      <p style="font-size:13px; color:#6b7280; margin-bottom:16px;">Nhập email đã đăng ký để nhận Tên đăng nhập và Mã OTP.</p>
       
-      <!-- Bước 1: Nhập Email -->
       <div id="step-1-forgot">
         <div style="margin-bottom:14px;">
-          <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:5px;">Email đã đăng ký</label>
-          <input type="email" id="f-email" placeholder="VD: ungvien@gmail.com" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; outline:none;">
+          <input type="email" id="f-email" placeholder="Nhập email của bạn" style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
         </div>
-        <button type="button" onclick="requestOTP()" class="btn-search" style="width:100%; padding:11px; font-size:14px; font-weight:600; border-radius:6px; margin-bottom:12px;">GỬI MÃ XÁC NHẬN QUA EMAIL</button>
+        <button type="button" onclick="requestOTP()" class="btn-search" style="width:100%; padding:11px; border-radius:6px; margin-bottom:12px;">GỬI MÃ XÁC NHẬN</button>
       </div>
 
-      <!-- Bước 2: Nhập OTP và Mật khẩu mới -->
       <div id="step-2-forgot" style="display:none;">
         <div style="margin-bottom:12px;">
-          <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Mã OTP (6 chữ số)</label>
-          <input type="text" id="f-token" placeholder="VD: 123456" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
+          <input type="text" id="f-token" placeholder="Nhập mã OTP 6 số" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box; margin-bottom:10px;">
+          <input type="password" id="f-newpass" placeholder="Mật khẩu mới" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
         </div>
-        <div style="margin-bottom:16px;">
-          <label style="display:block; font-size:13px; font-weight:600; color:#374151; margin-bottom:4px;">Mật khẩu mới</label>
-          <div style="position:relative;">
-            <input type="password" id="f-newpass" placeholder="Nhập mật khẩu mới" style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; box-sizing:border-box;">
-            <i class="fa-regular fa-eye" onclick="togglePassVisibility('f-newpass', this)" style="position:absolute; right:12px; top:10px; color:#9ca3af; cursor:pointer;"></i>
-          </div>
-        </div>
-        <button type="button" onclick="confirmResetPassword()" class="btn-search" style="width:100%; padding:11px; font-size:14px; font-weight:600; background:#10b981; border-radius:6px; margin-bottom:12px;">ĐẶT LẠI MẬT KHẨU</button>
+        <button type="button" onclick="confirmResetPassword()" class="btn-search" style="width:100%; padding:11px; background:#10b981; border-radius:6px; margin-bottom:12px;">ĐẶT LẠI MẬT KHẨU</button>
       </div>
-
-      <div style="text-align:center; margin-top:8px;">
-        <a href="#" onclick="switchAuthMode('login')" style="font-size:13px; color:#6b7280; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại đăng nhập</a>
-      </div>
+      <div style="text-align:center;"><a href="#" onclick="switchAuthMode('login')" style="font-size:13px; color:#6b7280; text-decoration:none;">Quay lại đăng nhập</a></div>
     </div>
 
     <div id="auth-msg" style="margin-top:16px; font-size:13px; text-align:center;"></div>
     
     <div style="margin-top:24px; text-align:center;">
-      <a href="/" style="color:#6b7280; font-size:13px; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay về trang chủ tìm việc</a>
+      <a href="/" style="color:#6b7280; font-size:13px; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay về trang chủ</a>
     </div>
   </div>
 
@@ -118,7 +108,6 @@
       document.getElementById('forgot-form').style.display = mode === 'forgot' ? 'block' : 'none';
       document.getElementById('auth-tabs').style.display = mode === 'forgot' ? 'none' : 'flex';
       document.getElementById('auth-msg').innerHTML = '';
-      
       if(mode === 'forgot') {
         document.getElementById('step-1-forgot').style.display = 'block';
         document.getElementById('step-2-forgot').style.display = 'none';
@@ -139,88 +128,65 @@
     async function handleLogin(e) {
       e.preventDefault();
       const msg = document.getElementById('auth-msg');
-      msg.innerHTML = '<span style="color:#6b7280;"><i class="fa-solid fa-spinner fa-spin"></i> Đang xác thực thông tin...</span>';
+      msg.innerHTML = '<span style="color:#6b7280;">Đang đăng nhập...</span>';
 
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: document.getElementById('l-username').value,
-            password: document.getElementById('l-password').value
-          })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          msg.innerHTML = '<span style="color:#10b981; font-weight:600;">✓ Đăng nhập thành công! Đang chuyển hướng...</span>';
-          setTimeout(() => {
-            if (data.user.role === 'admin') {
-              window.location.href = '/admin';
-            } else {
-              window.location.href = '/';
-            }
-          }, 800);
-        } else {
-          msg.innerHTML = `<span style="color:#dc2626; font-weight:600;">✕ ${data.message}</span>`;
-        }
-      } catch (err) {
-        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('l-username').value,
+          password: document.getElementById('l-password').value
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = (data.user.role === 'admin' || data.user.role === 'employer') ? '/admin' : '/';
+      } else {
+        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
       }
     }
 
     async function handleRegister(e) {
       e.preventDefault();
       const msg = document.getElementById('auth-msg');
-      msg.innerHTML = '<span style="color:#6b7280;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tạo tài khoản an toàn...</span>';
+      msg.innerHTML = '<span style="color:#6b7280;">Đang tạo tài khoản...</span>';
 
-      try {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fullname: document.getElementById('r-fullname').value,
-            email: document.getElementById('r-email').value,
-            username: document.getElementById('r-username').value,
-            password: document.getElementById('r-password').value
-          })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-          msg.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ ${data.message} Vui lòng chuyển sang Đăng nhập.</span>`;
-          document.getElementById('register-form').reset();
-          setTimeout(() => switchAuthMode('login'), 1500);
-        } else {
-          msg.innerHTML = `<span style="color:#dc2626; font-weight:600;">✕ ${data.message}</span>`;
-        }
-      } catch (err) {
-        msg.innerHTML = '<span style="color:#dc2626;">Lỗi đăng ký tài khoản!</span>';
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: document.getElementById('r-role').value,
+          fullname: document.getElementById('r-fullname').value,
+          email: document.getElementById('r-email').value,
+          username: document.getElementById('r-username').value,
+          password: document.getElementById('r-password').value
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        msg.innerHTML = `<span style="color:#10b981;">Đăng ký thành công! Chuyển hướng đăng nhập...</span>`;
+        setTimeout(() => switchAuthMode('login'), 1500);
+      } else {
+        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
       }
     }
 
     async function requestOTP() {
       const email = document.getElementById('f-email').value;
       const msg = document.getElementById('auth-msg');
-      if (!email) return alert('Vui lòng nhập địa chỉ email!');
-
-      msg.innerHTML = '<span style="color:#6b7280;"><i class="fa-solid fa-spinner fa-spin"></i> Đang gửi mã xác nhận qua Gmail...</span>';
-      try {
-        const res = await fetch('/api/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        const data = await res.json();
-        if (data.success) {
-          msg.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ ${data.message}</span>`;
-          document.getElementById('step-1-forgot').style.display = 'none';
-          document.getElementById('step-2-forgot').style.display = 'block';
-        } else {
-          msg.innerHTML = `<span style="color:#dc2626; font-weight:600;">✕ ${data.message}</span>`;
-        }
-      } catch (err) {
-        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
+      if(!email) return alert('Nhập email!');
+      const res = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if(data.success) {
+        msg.innerHTML = `<span style="color:#10b981;">${data.message}</span>`;
+        document.getElementById('step-1-forgot').style.display = 'none';
+        document.getElementById('step-2-forgot').style.display = 'block';
+      } else {
+        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
       }
     }
 
@@ -229,25 +195,17 @@
       const token = document.getElementById('f-token').value;
       const newPassword = document.getElementById('f-newpass').value;
       const msg = document.getElementById('auth-msg');
-
-      if (!token || !newPassword) return alert('Vui lòng điền mã OTP và mật khẩu mới!');
-
-      msg.innerHTML = '<span style="color:#6b7280;"><i class="fa-solid fa-spinner fa-spin"></i> Đang cập nhật mật khẩu mới...</span>';
-      try {
-        const res = await fetch('/api/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, token, newPassword })
-        });
-        const data = await res.json();
-        if (data.success) {
-          msg.innerHTML = `<span style="color:#10b981; font-weight:600;">✓ ${data.message} Vui lòng đăng nhập lại.</span>`;
-          setTimeout(() => switchAuthMode('login'), 2000);
-        } else {
-          msg.innerHTML = `<span style="color:#dc2626; font-weight:600;">✕ ${data.message}</span>`;
-        }
-      } catch (err) {
-        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
+      const res = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, newPassword })
+      });
+      const data = await res.json();
+      if(data.success) {
+        msg.innerHTML = `<span style="color:#10b981;">${data.message}</span>`;
+        setTimeout(() => switchAuthMode('login'), 2000);
+      } else {
+        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
       }
     }
   </script>
