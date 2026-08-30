@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cổng Tài Khoản Tuyển Dụng - Tập Đoàn Đông Dương</title>
+  <title>Cổng Tài Khoản Tuyển Dụng - NEXTSTEP</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -12,9 +12,9 @@
   <div style="background:#ffffff; padding:36px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.08); width:100%; max-width:440px; box-sizing:border-box;">
     
     <div style="text-align:center; margin-bottom:24px;">
-  <h2 style="margin:0 0 6px 0; color:#111827; font-size:22px;">Hệ Thống Tuyển Dụng</h2>
-  <p style="margin:0; color:#6b7280; font-size:12px; font-weight:600; letter-spacing:0.5px;">NEXTSTEP - BƯỚC TIẾN TIẾP THEO TRONG SỰ NGHIỆP</p>
-</div>
+      <h2 style="margin:0 0 6px 0; color:#111827; font-size:22px;">Hệ Thống Tuyển Dụng</h2>
+      <p style="margin:0; color:#6b7280; font-size:12px; font-weight:600; letter-spacing:0.5px;">NEXTSTEP - BƯỚC TIẾN TIẾP THEO TRONG SỰ NGHIỆP</p>
+    </div>
 
     <!-- Thanh Tab -->
     <div id="auth-tabs" style="display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:24px;">
@@ -130,19 +130,23 @@
       const msg = document.getElementById('auth-msg');
       msg.innerHTML = '<span style="color:#6b7280;">Đang đăng nhập...</span>';
 
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: document.getElementById('l-username').value,
-          password: document.getElementById('l-password').value
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        window.location.href = (data.user.role === 'admin' || data.user.role === 'employer') ? '/admin' : '/';
-      } else {
-        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('l-username').value,
+            password: document.getElementById('l-password').value
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = (data.user.role === 'admin' || data.user.role === 'employer') ? '/admin' : '/';
+        } else {
+          msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
       }
     }
 
@@ -151,23 +155,27 @@
       const msg = document.getElementById('auth-msg');
       msg.innerHTML = '<span style="color:#6b7280;">Đang tạo tài khoản...</span>';
 
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: document.getElementById('r-role').value,
-          fullname: document.getElementById('r-fullname').value,
-          email: document.getElementById('r-email').value,
-          username: document.getElementById('r-username').value,
-          password: document.getElementById('r-password').value
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        msg.innerHTML = `<span style="color:#10b981;">Đăng ký thành công! Chuyển hướng đăng nhập...</span>`;
-        setTimeout(() => switchAuthMode('login'), 1500);
-      } else {
-        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            role: document.getElementById('r-role').value,
+            fullname: document.getElementById('r-fullname').value,
+            email: document.getElementById('r-email').value,
+            username: document.getElementById('r-username').value,
+            password: document.getElementById('r-password').value
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          msg.innerHTML = `<span style="color:#10b981;">Đăng ký thành công! Chuyển hướng đăng nhập...</span>`;
+          setTimeout(() => switchAuthMode('login'), 1500);
+        } else {
+          msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
       }
     }
 
@@ -175,18 +183,22 @@
       const email = document.getElementById('f-email').value;
       const msg = document.getElementById('auth-msg');
       if(!email) return alert('Nhập email!');
-      const res = await fetch('/api/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if(data.success) {
-        msg.innerHTML = `<span style="color:#10b981;">${data.message}</span>`;
-        document.getElementById('step-1-forgot').style.display = 'none';
-        document.getElementById('step-2-forgot').style.display = 'block';
-      } else {
-        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+      try {
+        const res = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if(data.success) {
+          msg.innerHTML = `<span style="color:#10b981;">${data.message}</span>`;
+          document.getElementById('step-1-forgot').style.display = 'none';
+          document.getElementById('step-2-forgot').style.display = 'block';
+        } else {
+          msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
       }
     }
 
@@ -195,17 +207,21 @@
       const token = document.getElementById('f-token').value;
       const newPassword = document.getElementById('f-newpass').value;
       const msg = document.getElementById('auth-msg');
-      const res = await fetch('/api/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, token, newPassword })
-      });
-      const data = await res.json();
-      if(data.success) {
-        msg.innerHTML = `<span style="color:#10b981;">${data.message}</span>`;
-        setTimeout(() => switchAuthMode('login'), 2000);
-      } else {
-        msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+      try {
+        const res = await fetch('/api/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, token, newPassword })
+        });
+        const data = await res.json();
+        if(data.success) {
+          msg.innerHTML = `<span style="color:#10b981;">${data.message}</span>`;
+          setTimeout(() => switchAuthMode('login'), 2000);
+        } else {
+          msg.innerHTML = `<span style="color:#dc2626;">${data.message}</span>`;
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:#dc2626;">Lỗi kết nối máy chủ!</span>';
       }
     }
   </script>
