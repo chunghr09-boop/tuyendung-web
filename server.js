@@ -74,13 +74,24 @@ async function sendNotificationEmails({ fullname, email, jobTitle, cvOriginalNam
   }
 }
 
-// ==================== DATABASE SQLITE (ATS SCHEMA) ====================
+// ==================== DATABASE SQLITE (USERS & ATS) ====================
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const db = new Database(path.join(__dirname, 'recruitment.db'));
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    fullname TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT DEFAULT 'user',
+    status TEXT DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -107,13 +118,16 @@ db.exec(`
   );
 `);
 
-// Tự động bổ sung cột status nếu DB cũ chưa có
-try {
-  db.exec(`ALTER TABLE applicants ADD COLUMN status TEXT DEFAULT 'pending'`);
-} catch (e) {
-  // Cột đã tồn tại
+// Tạo tài khoản Admin mặc định nếu chưa tồn tại
+const adminUser = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
+if (!adminUser) {
+  db.prepare(`
+    INSERT INTO users (id, fullname, email, username, password, role, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run('user-admin-root', 'Quản Trị Viên', 'chunghr09@gmail.com', 'admin', 'admin123', 'admin', 'active');
 }
 
+// Dữ liệu 5 vị trí mẫu
 const initialJobs = [
   {
     id: 'job-1',
@@ -262,8 +276,8 @@ app.use(session({
   cookie: { maxAge: 2 * 60 * 60 * 1000 }
 }));
 
-const requireAuth = (req, res, next) => {
-  if (req.session && req.session.isAdmin) return next();
+const requireAdmin = (req, res, next) => {
+  if (req.session && req.session.user && req.session.user.role === 'admin') return next();
   if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
     return res.status(401).json({ error: 'Chưa xác thực quyền quản trị!' });
   }
@@ -272,14 +286,60 @@ const requireAuth = (req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== AUTH ROUTES ====================
+// ==================== USER AUTHENTICATION APIS ====================
+
+// Đăng ký tài khoản ứng viên mới
+app.post('/api/register', (req, res) => {
+  const { fullname, email, username, password } = req.body;
+  if (!fullname || !email || !username || !password) {
+    return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin!' });
+  }
+
+  const existing = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(username.trim(), email.trim());
+  if (existing) {
+    return res.status(400).json({ success: false, message: 'Tên đăng nhập hoặc Email đã tồn tại!' });
+  }
+
+  const id = 'user-' + Date.now();
+  db.prepare(`
+    INSERT INTO users (id, fullname, email, username, password, role, status)
+    VALUES (?, ?, ?, ?, ?, 'user', 'active')
+  `).run(id, fullname.trim(), email.trim(), username.trim(), password.trim());
+
+  res.json({ success: true, message: 'Đăng ký tài khoản thành công!' });
+});
+
+// Đăng nhập hệ thống (cho cả Admin và Ứng viên)
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  if (username === 'admin' && password === 'admin123') {
-    req.session.isAdmin = true;
-    return res.json({ success: true });
+  const user = db.prepare('SELECT * FROM users WHERE username = ? AND password = ?').get(username.trim(), password.trim());
+
+  if (!user) {
+    return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
   }
-  res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không đúng!' });
+
+  if (user.status === 'blocked') {
+    return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa bởi Quản trị viên!' });
+  }
+
+  req.session.user = {
+    id: user.id,
+    fullname: user.fullname,
+    email: user.email,
+    username: user.username,
+    role: user.role
+  };
+
+  res.json({ success: true, user: req.session.user });
+});
+
+// Lấy thông tin phiên đăng nhập hiện tại
+app.get('/api/current-user', (req, res) => {
+  if (req.session && req.session.user) {
+    res.json({ loggedIn: true, user: req.session.user });
+  } else {
+    res.json({ loggedIn: false });
+  }
 });
 
 app.post('/api/logout', (req, res) => {
@@ -287,7 +347,39 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// ==================== PUBLIC API ====================
+// ==================== ADMIN QUẢN LÝ USER APIS ====================
+
+// Lấy danh sách tất cả người dùng
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  const rows = db.prepare('SELECT id, fullname, email, username, role, status, created_at FROM users ORDER BY rowid DESC').all();
+  res.json(rows);
+});
+
+// Khóa / Mở khóa tài khoản
+app.patch('/api/admin/users/:id/status', requireAdmin, (req, res) => {
+  const { status } = req.body;
+  const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+
+  if (targetUser && targetUser.username === 'admin') {
+    return res.status(400).json({ success: false, message: 'Không thể khóa tài khoản Admin tối cao!' });
+  }
+
+  db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, req.params.id);
+  res.json({ success: true });
+});
+
+// Xóa tài khoản
+app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+  const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (targetUser && targetUser.username === 'admin') {
+    return res.status(400).json({ success: false, message: 'Không thể xóa tài khoản Admin tối cao!' });
+  }
+
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ==================== PUBLIC JOBS & APPLY ====================
 app.get('/api/jobs', (req, res) => {
   const { keyword, location, category } = req.query;
   let query = 'SELECT * FROM jobs WHERE 1=1';
@@ -373,17 +465,16 @@ app.post('/apply', (req, res) => {
 });
 
 // ==================== ADMIN ATS APIs ====================
-app.get('/admin', requireAuth, (req, res) => {
+app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-app.get('/api/applicants', requireAuth, (req, res) => {
+app.get('/api/applicants', requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT id, fullname, email, job_title as jobTitle, original_name as originalName, saved_name as savedName, file_size as fileSize, applied_at as appliedAt, status FROM applicants ORDER BY rowid DESC').all();
   res.json(rows);
 });
 
-// Cập nhật trạng thái ATS vòng đời ứng viên
-app.patch('/api/applicants/:id/status', requireAuth, (req, res) => {
+app.patch('/api/applicants/:id/status', requireAdmin, (req, res) => {
   const { status } = req.body;
   const validStatuses = ['pending', 'reviewed', 'interview', 'passed', 'rejected'];
   if (!validStatuses.includes(status)) {
@@ -394,8 +485,7 @@ app.patch('/api/applicants/:id/status', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-// Xóa hồ sơ ứng viên
-app.delete('/api/applicants/:id', requireAuth, (req, res) => {
+app.delete('/api/applicants/:id', requireAdmin, (req, res) => {
   const appRecord = db.prepare('SELECT saved_name FROM applicants WHERE id = ?').get(req.params.id);
   if (appRecord) {
     const filePath = path.join(uploadDir, appRecord.saved_name);
@@ -405,17 +495,16 @@ app.delete('/api/applicants/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/download/:filename', requireAuth, (req, res) => {
+app.get('/download/:filename', requireAdmin, (req, res) => {
   const filePath = path.join(uploadDir, req.params.filename);
   if (!fs.existsSync(filePath)) return res.status(404).send('Không tìm thấy file!');
   const applicant = db.prepare('SELECT original_name FROM applicants WHERE saved_name = ?').get(req.params.filename);
   res.download(filePath, applicant ? applicant.original_name : req.params.filename);
 });
 
-// Đăng tin tuyển dụng mới
-app.post('/api/jobs', requireAuth, (req, res) => {
+app.post('/api/jobs', requireAdmin, (req, res) => {
   const { title, company, location, category, salary, badge, description, requirements } = req.body;
-  if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin bắt buộc!' });
+  if (!title || !company || !salary) return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin!' });
 
   const descArr = description ? description.split('\n').map(s => s.trim()).filter(Boolean) : [];
   const reqArr = requirements ? requirements.split('\n').map(s => s.trim()).filter(Boolean) : [];
@@ -439,10 +528,9 @@ app.post('/api/jobs', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-// Xóa tin tuyển dụng
-app.delete('/api/jobs/:id', requireAuth, (req, res) => {
+app.delete('/api/jobs/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM jobs WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
-app.listen(PORT, () => console.log(`Hệ thống tuyển dụng ATS đã sẵn sàng tại http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Hệ thống Quản trị Tuyển dụng sẵn sàng tại http://localhost:${PORT}`));
